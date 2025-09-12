@@ -16,7 +16,7 @@ def delete_working_hours(times_id: str, api_key: str, base_url: str = "https://m
     """
     
     # Construct the endpoint URL
-    url = f"{base_url}/times/{times_id}"
+    url = f"{base_url}/users/times/{times_id}"
     
     # Set up headers with API key
     headers = {
