@@ -1,0 +1,5 @@
+# TGM-Adapter Requirements
+# Add your Python package dependencies here
+# Example:
+# requests>=2.25.0
+# flask>=2.0.0
