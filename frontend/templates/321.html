@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>💖</title>
+  <style>
+    :root{
+      --heart-size: 160px; 
+      --heart-color: #ff4b6e;
+      --beat-scale: 1.18;        
+      --beat-duration: 0.95s;    
+      --bg: #111018;          
+    }
+
+    *{box-sizing: border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:24px;
+      padding:32px;
+      background: radial-gradient(circle at 20% 10%, rgba(255,75,110,0.06), transparent 8%), var(--bg);
+      color:#fff;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      flex-direction:column;
+    }
+
+    .stage{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:18px;
+      flex-direction:column;
+    }
+
+    /* Das Herz */
+    .heart{
+      --size: var(--heart-size);
+      position: relative;
+      width: var(--size);
+      height: var(--size);
+      transform: rotate(-45deg);
+      animation: beat var(--beat-duration) infinite cubic-bezier(.2,.7,.25,1);
+    }
+
+    .heart::before,
+    .heart::after{
+      content: "";
+      position: absolute;
+      width: var(--size);
+      height: var(--size);
+      background: var(--heart-color);
+      border-radius: 50%;
+    }
+
+    .heart::before{
+      top: -50%;
+      left: 0;
+    }
+
+    .heart::after{
+      left: 50%;
+      top: 0;
+    }
+
+    .heart{
+      background: var(--heart-color);
+    }
+
+    @keyframes beat{
+      0%   { transform: rotate(-45deg) scale(1); }
+      10%  { transform: rotate(-45deg) scale(var(--beat-scale)); }
+      22%  { transform: rotate(-45deg) scale(0.96); }
+      40%  { transform: rotate(-45deg) scale(1); }
+      100% { transform: rotate(-45deg) scale(1); }
+    }
+
+    .pulse-shadow{
+      width: calc(var(--heart-size) * 0.9);
+      height: calc(var(--heart-size) * 0.55);
+      border-radius:50%;
+      background: radial-gradient(ellipse at center, rgba(255,75,110,0.18), transparent 45%);
+      filter: blur(12px);
+      transform-origin:center;
+      animation: shadowBeat var(--beat-duration) infinite cubic-bezier(.2,.7,.25,1);
+    }
+
+    @keyframes shadowBeat{
+      0%   { transform: scale(1); opacity:0.45 }
+      10%  { transform: scale(1.12); opacity:0.65 }
+      22%  { transform: scale(0.98); opacity:0.35 }
+      40%  { transform: scale(1); opacity:0.45 }
+      100% { transform: scale(1); opacity:0.45 }
+    }
+
+    .controls{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      justify-content:center;
+      margin-top:6px;
+    }
+
+    button{
+      background:transparent;
+      border:1px solid rgba(255,255,255,0.12);
+      color:inherit;
+      padding:8px 12px;
+      border-radius:10px;
+      cursor:pointer;
+      backdrop-filter: blur(6px);
+      transition:transform .12s ease, background .12s ease;
+    }
+    button:hover{ transform: translateY(-3px); }
+
+    .paused .heart,
+    .paused .pulse-shadow{
+      animation-play-state: paused !important;
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .heart, .pulse-shadow{ animation: none !important }
+    }
+
+    @media (max-width:420px){
+      :root{ --heart-size: 120px }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="stage" id="stage">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+      <div class="pulse-shadow" aria-hidden="true"></div>
+      <div class="heart" role="img" aria-label="Pochendes Herz"></div>
+    </div>
+  </div>
+
+ </body>
+</html>

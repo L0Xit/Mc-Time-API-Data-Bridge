@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Middleware Konfiguration - Mc-Time API Data Bridge</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="nav-header">
+            <h1>Middleware Konfiguration</h1>
+            <a href="{{ url_for('home') }}" class="nav-btn">← Zurück zur Hauptseite</a>
+        </div>
+
+        <section class="sector">
+            <h2>Middleware Status</h2>
+            <div id="middleware-status-container">
+                <!-- Wird dynamisch mit JavaScript gefüllt -->
+            </div>
+        </section>
+
+        <section class="sector">
+            <h2>Middleware Verbindungstest</h2>
+            <div class="test-container">
+                <button onclick="testMiddlewareConnection()" class="test-btn">Middleware-Verbindung testen</button>
+            </div>
+            <div id="test-results"></div>
+        </section>
+
+        <section class="sector">
+            <h2>Produktions-Modus</h2>
+            <p class="info-text">
+                Aktuell läuft das Frontend im <strong>Dummy-Modus</strong> für Entwicklungszwecke.
+                Sobald die Middleware verfügbar ist, kann hier auf den Produktions-Modus gewechselt werden.
+            </p>
+            <div class="production-container">
+                <input type="text" id="middleware-url" placeholder="Middleware URL (z.B. http://localhost:8080/api)" class="url-input">
+                <button onclick="switchToProduction()" class="production-btn" disabled>Produktions-Modus aktivieren</button>
+            </div>
+            <p class="note">
+                <strong>Hinweis:</strong> Diese Funktion wird aktiviert, sobald die Middleware implementiert ist.
+            </p>
+        </section>
+    </div>
+
+    <script>
+        // Lädt Middleware-Status beim Seitenaufruf
+        document.addEventListener('DOMContentLoaded', function() {
+            loadMiddlewareStatus();
+        });
+
+        function loadMiddlewareStatus() {
+            fetch('/api/middleware/status')
+                .then(response => response.json())
+                .then(data => {
+                    displayMiddlewareStatus(data);
+                })
+                .catch(error => {
+                    console.error('Fehler beim Laden des Middleware-Status:', error);
+                });
+        }
+
+        function displayMiddlewareStatus(status) {
+            const container = document.getElementById('middleware-status-container');
+            
+            const statusClass = status.connected ? 'status-enabled' : 'status-disabled';
+            
+            container.innerHTML = `
+                <div class="middleware-status-item">
+                    <div class="middleware-info">
+                        <h3>Middleware Verbindung</h3>
+                        <p class="middleware-url">URL: ${status.middleware_url}</p>
+                        <p class="last-check">Letzter Check: ${status.last_check}</p>
+                        <span class="middleware-status ${statusClass}">${status.status}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function testMiddlewareConnection() {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '<p>Teste Middleware-Verbindung...</p>';
+
+            fetch('/api/middleware/ping')
+                .then(response => response.json())
+                .then(data => {
+                    const statusClass = data.success ? 'test-success' : 'test-error';
+                    resultsDiv.innerHTML = `
+                        <div class="test-result ${statusClass}">
+                            <p><strong>Ergebnis:</strong> ${data.message}</p>
+                            <p><strong>Antwortzeit:</strong> ${data.response_time}</p>
+                            <p><strong>Zeitstempel:</strong> ${data.timestamp}</p>
+                        </div>
+                    `;
+                })
+                .catch(error => {
+                    resultsDiv.innerHTML = `
+                        <div class="test-result test-error">
+                            <p><strong>Fehler:</strong> ${error.message}</p>
+                        </div>
+                    `;
+                });
+        }
+
+        function switchToProduction() {
+            const middlewareUrl = document.getElementById('middleware-url').value;
+            if (!middlewareUrl) {
+                alert('Bitte gib die Middleware-URL ein.');
+                return;
+            }
+
+            // TODO: Implementierung wenn Middleware verfügbar ist
+            alert('Produktions-Modus wird implementiert, sobald die Middleware verfügbar ist.');
+        }
+    </script>
+</body>
+</html>

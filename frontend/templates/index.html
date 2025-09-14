@@ -3,11 +3,170 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flask Frontend</title>
+    <title>Mc-Time API Data Bridge</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>Willkommen zum Flask Frontend!</h1>
-    <p>Dies ist eine einfache Startseite.</p>
+    <div class="container">
+        <!-- Sektor 1: Projektstatus -->
+        <section class="sector sector-1">
+            <h1>Mc-Time API Data Bridge</h1>
+            <div class="status-container">
+                <span class="status-label">Datenbankverbindung:</span>
+                <span class="status-indicator {{ 'connected' if db_status else 'disconnected' }}">
+                    {{ 'Verbunden' if db_status else 'Getrennt' }}
+                </span>
+            </div>
+            <div class="nav-buttons">
+                <a href="{{ url_for('api_config') }}" class="nav-btn">API Konfiguration</a>
+            </div>
+        </section>
+
+        <!-- Sektor 2: Filteroptionen -->
+        <section class="sector sector-2">
+            <h2>Datenfilter</h2>
+            <div class="filter-container">
+                <div class="filter-group">
+                    <label for="company-select">Firma:</label>
+                    <select id="company-select" name="company">
+                        <option value="">Bitte wählen...</option>
+                        {% for company in companies %}
+                        <option value="{{ company }}">{{ company }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="employee-select">Mitarbeiter:</label>
+                    <select id="employee-select" name="employee">
+                        <option value="">Bitte wählen...</option>
+                        {% for employee in employees %}
+                        <option value="{{ employee }}">{{ employee }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="date-from">Von:</label>
+                    <input type="date" id="date-from" name="date-from">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="date-to">Bis:</label>
+                    <input type="date" id="date-to" name="date-to">
+                </div>
+                
+                <button class="filter-btn" onclick="filterData()">Daten laden</button>
+            </div>
+        </section>
+
+        <!-- Sektor 3: Datentabelle -->
+        <section class="sector sector-3">
+            <div class="table-header">
+                <h2>Datenübersicht</h2>
+                <button onclick="downloadCSV()" class="download-btn">CSV Download</button>
+            </div>
+            <div class="table-container">
+                <table id="data-table">
+                    <thead>
+                        <tr>
+                            <th>Datum</th>
+                            <th>Mitarbeiter</th>
+                            <th>Stunden</th>
+                            <th>Projekt</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>2025-01-01</td>
+                            <td>Max Mustermann</td>
+                            <td>8.0</td>
+                            <td>Projekt A</td>
+                        </tr>
+                        <tr>
+                            <td>2025-01-02</td>
+                            <td>Anna Schmidt</td>
+                            <td>7.5</td>
+                            <td>Projekt B</td>
+                        </tr>
+                        <tr>
+                            <td>2025-01-03</td>
+                            <td>Tom Wagner</td>
+                            <td>8.0</td>
+                            <td>Projekt A</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Sektor 4: Zukünftige Funktionen -->
+        <section class="sector sector-4">
+            <h2>Erweiterte Funktionen</h2>
+            <p class="placeholder-text">Hier werden zukünftige Features implementiert...</p>
+        </section>
+    </div>
+
+    <script>
+        function filterData() {
+            const company = document.getElementById('company-select').value;
+            const employee = document.getElementById('employee-select').value;
+            const dateFrom = document.getElementById('date-from').value;
+            const dateTo = document.getElementById('date-to').value;
+            
+            // API-Call zum Laden der gefilterten Daten
+            const params = new URLSearchParams();
+            if (company) params.append('company', company);
+            if (employee) params.append('employee', employee);
+            if (dateFrom) params.append('date_from', dateFrom);
+            if (dateTo) params.append('date_to', dateTo);
+            
+            fetch(`/api/data?${params}`)
+                .then(response => response.json())
+                .then(data => {
+                    updateTable(data);
+                })
+                .catch(error => {
+                    console.error('Fehler beim Laden der Daten:', error);
+                    alert('Fehler beim Laden der Daten!');
+                });
+        }
+
+        function updateTable(data) {
+            const tbody = document.querySelector('#data-table tbody');
+            tbody.innerHTML = '';
+            
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4">Keine Daten gefunden</td></tr>';
+                return;
+            }
+            
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.date || ''}</td>
+                    <td>${row.employee || ''}</td>
+                    <td>${row.hours || ''}</td>
+                    <td>${row.project || ''}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function downloadCSV() {
+            const company = document.getElementById('company-select').value;
+            const employee = document.getElementById('employee-select').value;
+            const dateFrom = document.getElementById('date-from').value;
+            const dateTo = document.getElementById('date-to').value;
+            
+            const params = new URLSearchParams();
+            if (company) params.append('company', company);
+            if (employee) params.append('employee', employee);
+            if (dateFrom) params.append('date_from', dateFrom);
+            if (dateTo) params.append('date_to', dateTo);
+            
+            window.location.href = `/download_csv?${params}`;
+        }
+    </script>
 </body>
 </html>
