@@ -128,18 +128,41 @@ body {
     margin-bottom: 15px;
 }
 
-.download-btn {
+.action-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.download-btn, .email-btn {
     padding: 8px 16px;
-    background: #27ae60;
     color: white;
     text-decoration: none;
+    border: none;
     border-radius: 4px;
     font-weight: bold;
+    cursor: pointer;
     transition: background 0.3s;
+}
+
+.download-btn {
+    background: #27ae60;
 }
 
 .download-btn:hover {
     background: #219a52;
+}
+
+.email-btn {
+    background: #3498db;
+}
+
+.email-btn:hover {
+    background: #2980b9;
+}
+
+.email-btn:disabled {
+    background: #bdc3c7;
+    cursor: not-allowed;
 }
 
 .table-container {

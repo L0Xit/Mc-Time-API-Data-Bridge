@@ -31,7 +31,9 @@
                     <select id="company-select" name="company">
                         <option value="">Bitte wählen...</option>
                         {% for company in companies %}
-                        <option value="{{ company }}">{{ company }}</option>
+                        <option value="{{ company.id if company is mapping else company }}">
+                            {{ company.name if company is mapping else company }}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
@@ -41,7 +43,9 @@
                     <select id="employee-select" name="employee">
                         <option value="">Bitte wählen...</option>
                         {% for employee in employees %}
-                        <option value="{{ employee }}">{{ employee }}</option>
+                        <option value="{{ employee.id if employee is mapping else employee }}">
+                            {{ employee.name if employee is mapping else employee }}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
@@ -64,37 +68,26 @@
         <section class="sector sector-3">
             <div class="table-header">
                 <h2>Datenübersicht</h2>
-                <button onclick="downloadCSV()" class="download-btn">CSV Download</button>
+                <div class="action-buttons">
+                    <button onclick="downloadCSV()" class="download-btn">CSV Download</button>
+                    <button onclick="sendEmail()" class="email-btn">E-Mail senden</button>
+                </div>
             </div>
             <div class="table-container">
                 <table id="data-table">
                     <thead>
                         <tr>
+                            <th>ID</th>
                             <th>Datum</th>
                             <th>Mitarbeiter</th>
-                            <th>Stunden</th>
                             <th>Projekt</th>
+                            <th>Arbeitszeit</th>
+                            <th>Pausen</th>
+                            <th>Effektive Stunden</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>2025-01-01</td>
-                            <td>Max Mustermann</td>
-                            <td>8.0</td>
-                            <td>Projekt A</td>
-                        </tr>
-                        <tr>
-                            <td>2025-01-02</td>
-                            <td>Anna Schmidt</td>
-                            <td>7.5</td>
-                            <td>Projekt B</td>
-                        </tr>
-                        <tr>
-                            <td>2025-01-03</td>
-                            <td>Tom Wagner</td>
-                            <td>8.0</td>
-                            <td>Projekt A</td>
-                        </tr>
+                        <!-- Data will be populated by JavaScript when "Daten laden" is clicked -->
                     </tbody>
                 </table>
             </div>
@@ -114,42 +107,165 @@
             const dateFrom = document.getElementById('date-from').value;
             const dateTo = document.getElementById('date-to').value;
             
-            // API-Call zum Laden der gefilterten Daten
-            const params = new URLSearchParams();
-            if (company) params.append('company', company);
-            if (employee) params.append('employee', employee);
-            if (dateFrom) params.append('date_from', dateFrom);
-            if (dateTo) params.append('date_to', dateTo);
+            // Validate required fields
+            if (!employee || !dateFrom || !dateTo) {
+                alert('Bitte wählen Sie einen Mitarbeiter und geben Sie ein Datum von/bis an.');
+                return;
+            }
             
-            fetch(`/api/data?${params}`)
-                .then(response => response.json())
-                .then(data => {
-                    updateTable(data);
+            // Show loading state
+            const button = document.querySelector('.filter-btn');
+            button.disabled = true;
+            button.textContent = 'Laden...';
+            
+            // Format dates for API (YYYY-MM-DD to DD.MM.YYYY)
+            const formatDateForAPI = (dateStr) => {
+                if (!dateStr) return '';
+                const [year, month, day] = dateStr.split('-');
+                return `${day}.${month}.${year}`;
+            };
+            
+            // Prepare data for backend API
+            const formData = {
+                firma: company,
+                mitarbeiter: employee,
+                von: formatDateForAPI(dateFrom),
+                bis: formatDateForAPI(dateTo)
+            };
+            
+            // Log what we're sending
+            console.log('=== SENDING TO API ===');
+            console.log('Form Data:', formData);
+            
+            // Call backend API
+            fetch('/api/load-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+                .then(response => {
+                    console.log('=== API RESPONSE STATUS ===');
+                    console.log('Status:', response.status);
+                    console.log('Status Text:', response.statusText);
+                    return response.json();
+                })
+                .then(result => {
+                    console.log('=== API RESPONSE DATA ===');
+                    console.log('Full Response:', result);
+                    
+                    if (result.status === 'success') {
+                        console.log('Time Entries:', result.data.timeEntries);
+                        console.log('Number of entries:', result.data.timeEntries?.length || 0);
+                        updateTable(result.data.timeEntries);
+                    } else {
+                        console.error('API Error:', result.message);
+                        alert('Fehler beim Laden der Daten: ' + result.message);
+                    }
                 })
                 .catch(error => {
                     console.error('Fehler beim Laden der Daten:', error);
                     alert('Fehler beim Laden der Daten!');
+                })
+                .finally(() => {
+                    // Reset button state
+                    button.disabled = false;
+                    button.textContent = 'Daten laden';
                 });
         }
 
-        function updateTable(data) {
+        function updateTable(timeEntries) {
             const tbody = document.querySelector('#data-table tbody');
             tbody.innerHTML = '';
             
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4">Keine Daten gefunden</td></tr>';
+            console.log('=== UPDATING TABLE ===');
+            console.log('Time entries received:', timeEntries);
+            
+            if (!timeEntries || timeEntries.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7">Keine Zeiteinträge für den gewählten Zeitraum gefunden</td></tr>';
                 return;
             }
             
-            data.forEach(row => {
+            timeEntries.forEach(entry => {
                 const tr = document.createElement('tr');
+                
+                // Use enhanced data from backend
+                const entryId = entry.id ? entry.id.substring(0, 8) : 'Unknown'; // Show first 8 chars of ID
+                const date = entry.date_formatted || 'Unknown Date';
+                const userName = entry.name || 'Unknown User';
+                const project = entry.project || 'Unknown Project';
+                const workTime = entry.time_formatted || 'Unknown Time';
+                const breaks = entry.breaks_formatted || 'Keine Pausen';
+                const actualHours = entry.actual_work_hours ? `${entry.actual_work_hours}h` : '0h';
+                
+                console.log(`Entry: ID=${entryId}, Date=${date}, User='${userName}', Project='${project}', Hours=${actualHours}`);
+                
                 tr.innerHTML = `
-                    <td>${row.date || ''}</td>
-                    <td>${row.employee || ''}</td>
-                    <td>${row.hours || ''}</td>
-                    <td>${row.project || ''}</td>
+                    <td>${entryId}</td>
+                    <td>${date}</td>
+                    <td>${userName}</td>
+                    <td>${project}</td>
+                    <td>${workTime}</td>
+                    <td>${breaks}</td>
+                    <td>${actualHours}</td>
                 `;
                 tbody.appendChild(tr);
+            });
+        }
+
+        function sendEmail() {
+            const employee = document.getElementById('employee-select').value;
+            const employeeName = document.getElementById('employee-select').selectedOptions[0]?.text || 'Unknown';
+            const dateFrom = document.getElementById('date-from').value;
+            const dateTo = document.getElementById('date-to').value;
+            
+            if (!employee) {
+                alert('Bitte wählen Sie einen Mitarbeiter aus.');
+                return;
+            }
+            
+            if (!dateFrom || !dateTo) {
+                alert('Bitte geben Sie einen Datumsbereich an.');
+                return;
+            }
+            
+            // Check if there's data in the table
+            const tableRows = document.querySelectorAll('#data-table tbody tr');
+            if (tableRows.length === 0 || tableRows[0].children.length === 1) {
+                alert('Keine Daten zum Versenden vorhanden. Bitte laden Sie zuerst die Daten.');
+                return;
+            }
+            
+            const button = event.target;
+            button.disabled = true;
+            button.textContent = 'Sende E-Mail...';
+            
+            const formData = new FormData();
+            formData.append('employee_id', employee);
+            formData.append('employee_name', employeeName);
+            formData.append('date_from', dateFrom);
+            formData.append('date_to', dateTo);
+            
+            fetch('/api/send-email', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.status === 'success') {
+                    alert(`E-Mail erfolgreich an ${result.email} gesendet!`);
+                } else {
+                    alert(`Fehler beim Senden der E-Mail: ${result.message}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Fehler beim Senden der E-Mail.');
+            })
+            .finally(() => {
+                button.disabled = false;
+                button.textContent = 'E-Mail senden';
             });
         }
 
