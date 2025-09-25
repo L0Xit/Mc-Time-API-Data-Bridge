@@ -3,6 +3,10 @@ import os
 import io
 import csv
 import sys
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'backend'))
 
 from api_connector import middleware_connector
@@ -184,19 +188,11 @@ def send_email():
         })
 
 def send_time_report_email(email, employee_name, time_entries, date_from, date_to):
-    """Send time tracking report via email using various methods"""
-    import smtplib
-    import requests
-    import json
-    from email.mime.text import MIMEText
-    from email.mime.multipart import MIMEMultipart
+    """Send time tracking report via email using SMTP"""
     from datetime import datetime
     
     try:
-        # Email method configuration
-        email_method = os.environ.get('EMAIL_METHOD', 'simulate')  # smtp, sendgrid, mailgun, webhook, simulate
-        
-        # Create email content first (used by all methods)
+        # Create email content
         subject = f"Zeiterfassung für {employee_name} ({date_from} bis {date_to})"
         
         # Calculate totals
@@ -237,201 +233,83 @@ def send_time_report_email(email, employee_name, time_entries, date_from, date_t
         html_body += """
             </table>
             <br>
-            <p>Diese E-Mail wurde automatisch vom Mc-Time API Data Bridge System generiert.</p>
+            <p>Diese E-Mail wurde automatisch vom McTime System generiert.</p>
         </body>
         </html>
         """
         
-        # Choose email sending method
-        if email_method == 'sendgrid':
-            return send_email_sendgrid(email, subject, html_body)
-        elif email_method == 'mailgun':
-            return send_email_mailgun(email, subject, html_body)
-        elif email_method == 'webhook':
-            return send_email_webhook(email, subject, html_body, employee_name, time_entries, date_from, date_to)
-        elif email_method == 'smtp':
-            return send_email_smtp(email, subject, html_body)
-        else:  # simulate
-            return simulate_email_sending(email, subject, html_body, total_work_hours, total_entries)
+        # Send email via SMTP with TLS (as specified)
+        print("Sending email via SMTP with TLS...")
+        success = send_real_email_smtp(email, subject, html_body)
+        
+        return success
         
     except Exception as e:
         print(f"Error sending email: {e}")
         return False
 
-def send_email_sendgrid(email, subject, html_body):
-    """Send email using SendGrid API"""
+def send_real_email_smtp(to_email, subject, body_html):
+    """Send email using SMTP with TLS (exact user specifications)"""
     try:
-        import requests
+        smtp_server = os.getenv('SMTP_SERVER', 'email-smtp.eu-west-1.amazonaws.com')
+        smtp_port = int(os.getenv('SMTP_PORT', 587))
+        smtp_username = os.getenv('SMTP_USERNAME', 'AKIA3O74MZU7UX272LKI')
+        smtp_password = os.getenv('SMTP_PASSWORD', 'BN8dXZgLjEP/3g0q2keO5TFsQkBeJQUUUdGGvB+n9A/E')
+        from_email = os.getenv('SENDER_EMAIL', 'noreply@mctime.com')
+        use_tls = os.getenv('USE_TLS', 'true').lower() == 'true'
         
-        api_key = os.environ.get('SENDGRID_API_KEY')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@company.com')
-        
-        if not api_key:
-            print("SendGrid API key not configured")
-            return False
-            
-        url = "https://api.sendgrid.com/v3/mail/send"
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
-        
-        data = {
-            "personalizations": [{
-                "to": [{"email": email}],
-                "subject": subject
-            }],
-            "from": {"email": sender_email},
-            "content": [{
-                "type": "text/html",
-                "value": html_body
-            }]
-        }
-        
-        response = requests.post(url, headers=headers, json=data)
-        
-        if response.status_code == 202:
-            print(f"Email sent successfully via SendGrid to: {email}")
-            return True
-        else:
-            print(f"SendGrid error: {response.status_code} - {response.text}")
-            return False
-            
-    except Exception as e:
-        print(f"SendGrid error: {e}")
-        return False
-
-def send_email_mailgun(email, subject, html_body):
-    """Send email using Mailgun API"""
-    try:
-        import requests
-        
-        api_key = os.environ.get('MAILGUN_API_KEY')
-        domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = os.environ.get('SENDER_EMAIL', f'noreply@{domain}')
-        
-        if not api_key or not domain:
-            print("Mailgun API key or domain not configured")
-            return False
-            
-        url = f"https://api.mailgun.net/v3/{domain}/messages"
-        
-        response = requests.post(
-            url,
-            auth=("api", api_key),
-            data={
-                "from": sender_email,
-                "to": email,
-                "subject": subject,
-                "html": html_body
-            }
-        )
-        
-        if response.status_code == 200:
-            print(f"Email sent successfully via Mailgun to: {email}")
-            return True
-        else:
-            print(f"Mailgun error: {response.status_code} - {response.text}")
-            return False
-            
-    except Exception as e:
-        print(f"Mailgun error: {e}")
-        return False
-
-def send_email_webhook(email, subject, html_body, employee_name, time_entries, date_from, date_to):
-    """Send email using custom webhook"""
-    try:
-        import requests
-        
-        webhook_url = os.environ.get('EMAIL_WEBHOOK_URL')
-        webhook_token = os.environ.get('EMAIL_WEBHOOK_TOKEN', '')
-        
-        if not webhook_url:
-            print("Webhook URL not configured")
-            return False
-            
-        # Prepare webhook payload
-        payload = {
-            "to": email,
-            "subject": subject,
-            "html_body": html_body,
-            "employee_name": employee_name,
-            "date_from": date_from,
-            "date_to": date_to,
-            "time_entries": time_entries,
-            "token": webhook_token
-        }
-        
-        headers = {
-            "Content-Type": "application/json"
-        }
-        
-        if webhook_token:
-            headers["Authorization"] = f"Bearer {webhook_token}"
-            
-        response = requests.post(webhook_url, json=payload, headers=headers, timeout=30)
-        
-        if response.status_code == 200:
-            print(f"Email sent successfully via webhook to: {email}")
-            return True
-        else:
-            print(f"Webhook error: {response.status_code} - {response.text}")
-            return False
-            
-    except Exception as e:
-        print(f"Webhook error: {e}")
-        return False
-
-def send_email_smtp(email, subject, html_body):
-    """Send email using traditional SMTP"""
-    try:
-        import smtplib
-        from email.mime.text import MIMEText
-        from email.mime.multipart import MIMEMultipart
-        
-        # SMTP configuration
-        smtp_server = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
-        smtp_port = int(os.environ.get('SMTP_PORT', '587'))
-        sender_email = os.environ.get('SENDER_EMAIL')
-        sender_password = os.environ.get('SENDER_PASSWORD')
-        
-        if not sender_email or not sender_password:
-            print("SMTP credentials not configured")
-            return False
+        print("=== SENDING REAL EMAIL ===")
+        print(f"SMTP Server: {smtp_server}:{smtp_port}")
+        print(f"From: {from_email}")
+        print(f"To: {to_email}")
+        print(f"Subject: {subject}")
+        print(f"Username: {smtp_username}")
+        print(f"Password: {'***'}")
         
         # Create message
-        message = MIMEMultipart("alternative")
-        message["Subject"] = subject
-        message["From"] = sender_email
-        message["To"] = email
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = from_email
+        msg['To'] = to_email
         
-        # Add HTML content
-        html_part = MIMEText(html_body, "html")
-        message.attach(html_part)
+        # Add HTML body
+        html_part = MIMEText(body_html, 'html', 'utf-8')
+        msg.attach(html_part)
         
-        # Send email
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
+        print(f"TLS: {use_tls}")
+        
+        print("Connecting to SMTP server with TLS...")
+        
+        # Use TLS connection (as specified)
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        if use_tls:
+            print("Enabling TLS encryption...")
             server.starttls()
-            server.login(sender_email, sender_password)
-            server.send_message(message)
         
-        print(f"Email sent successfully via SMTP to: {email}")
+        print("Connected. Attempting login...")
+        server.login(smtp_username, smtp_password)
+        
+        print("Logged in. Sending email...")
+        server.send_message(msg)
+        server.quit()
+        
+        print("✅ Email sent successfully!")
         return True
         
+    except smtplib.SMTPAuthenticationError as e:
+        print(f"SMTP Authentication Error: {e}")
+        print("Tip: AWS SES may require proper SES SMTP credentials, not API credentials")
+        return False
+    except smtplib.SMTPException as e:
+        print(f"SMTP Error: {e}")
+        return False
     except Exception as e:
-        print(f"SMTP error: {e}")
+        print(f"Email sending error: {e}")
         return False
 
-def simulate_email_sending(email, subject, html_body, total_work_hours, total_entries):
-    """Simulate email sending for testing"""
-    print(f"=== SIMULATED EMAIL ===")
-    print(f"To: {email}")
-    print(f"Subject: {subject}")
-    print(f"Content length: {len(html_body)} characters")
-    print(f"Total work hours: {total_work_hours:.2f}h")
-    print(f"Entries: {total_entries}")
-    print("=== EMAIL SIMULATION COMPLETE ===")
-    return True
+
+
+
 
 @app.route('/download_csv')
 def download_csv():
