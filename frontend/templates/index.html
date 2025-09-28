@@ -12,11 +12,8 @@
     <header class="header">
         <div class="header-content">
             <div class="logo-section">
-                <img src="{{ url_for('static', filename='mctime_logo.png') }}" alt="mc time" class="logo">
-                <span class="logo-text">mc time</span>
-            </div>
-            <div class="slogan">
-                Daten — Datentransparenz & Konsistenz, unser Ding
+                <img src="{{ url_for('static', filename='mctime_logo.png') }}" alt="Daten — Datentransparenz & Konsistenz, unser Ding" class="logo">
+                <span class="logo-text">Daten — Datentransparenz & Konsistenz, unser Ding</span>
             </div>
         </div>
     </header>
@@ -51,9 +48,9 @@
         <div class="page-header">
             <h1 class="page-title">McTime Data API Bridge</h1>
             <div class="progress-container">
-                <div class="progress-label">McTime Data API Bridge</div>
+                <div class="progress-label" id="progress-label">Bereit zum Laden</div>
                 <div class="progress-bar">
-                    <div class="progress-fill"></div>
+                    <div class="progress-fill" id="progress-fill"></div>
                 </div>
             </div>
         </div>
@@ -102,6 +99,30 @@
                     </svg>
                     CSV Download
                 </button>
+                
+                <!-- Datenübersicht direkt im Filter-Bereich -->
+                <div style="margin-top: 32px;">
+                    <h3 class="card-title" style="font-size: 18px; margin-bottom: 16px;">Datenübersicht</h3>
+                    <div class="status-container" style="margin-bottom: 16px;">
+                        <span>Datenbankverbindung:</span>
+                        <span class="status-indicator {{ 'connected' if db_status else 'disconnected' }}">
+                            {{ 'Verbunden' if db_status else 'Getrennt' }}
+                        </span>
+                    </div>
+                    <table class="data-table" id="data-table">
+                        <thead>
+                            <tr>
+                                <th>Datum</th>
+                                <th>Mitarbeiter</th>
+                                <th>Stunden</th>
+                                <th>Projekt</th>
+                            </tr>
+                        </thead>
+                        <tbody id="data-table-body">
+                            <!-- Daten werden dynamisch per JavaScript geladen -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <!-- Contact & Email Card -->
@@ -137,73 +158,89 @@
             </div>
         </div>
 
-        <!-- Extended Functions -->
-        <div class="extended-functions">
-            <h2 class="card-title">Erweiterte Funktionen</h2>
-            <div class="function-grid">
-                <div class="function-btn primary" onclick="filterData()">
-                    <svg class="icon" viewBox="0 0 24 24" style="width: 20px; height: 20px; margin-right: 8px;">
-                        <path d="M14,12V19.88C14.04,20.18 13.94,20.5 13.71,20.71C13.32,21.1 12.69,21.1 12.3,20.71L10.29,18.7C10.06,18.47 9.96,18.16 10,17.87V12H9.97L4.21,4.62C3.87,4.19 3.95,3.56 4.38,3.22C4.57,3.08 4.78,3 5,3V3H19V3C19.22,3 19.43,3.08 19.62,3.22C20.05,3.56 20.13,4.19 19.79,4.62L14.03,12H14Z"/>
-                    </svg>
-                    Daten filtern
-                </div>
-                <div class="function-btn secondary">
-                    <svg class="icon" viewBox="0 0 24 24" style="width: 20px; height: 20px; margin-right: 8px;">
-                        <path d="M14,17H7V15H14M17,13H7V11H17M17,9H7V7H17M19,3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3Z"/>
-                    </svg>
-                    Multi-Text
-                </div>
-                <div class="function-btn download" onclick="downloadCSV()">
-                    <svg class="icon" viewBox="0 0 24 24" style="width: 20px; height: 20px; margin-right: 8px;">
-                        <path d="M23,12L19,8V11H10V13H19V16M1,18V6C1,4.89 1.89,4 3,4H15A2,2 0 0,1 17,6V9H15V6H3V18H15V15H17V18A2,2 0 0,1 15,20H3C1.89,20 1,19.1 1,18Z"/>
-                    </svg>
-                    CSV via E-Mail
-                </div>
-                <div class="function-btn secondary">
-                    <svg class="icon" viewBox="0 0 24 24" style="width: 20px; height: 20px; margin-right: 8px;">
-                        <path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M11,16.5L6.5,12L7.91,10.59L11,13.67L16.59,8.09L18,9.5L11,16.5Z"/>
-                    </svg>
-                    Validierung
-                </div>
-            </div>
-        </div>
-
-        <!-- Data Table -->
-        <div class="data-table-container">
-            <h2 class="card-title">Datenübersicht</h2>
-            <div class="status-container" style="margin-bottom: 20px;">
-                <span>Datenbankverbindung:</span>
-                <span class="status-indicator {{ 'connected' if db_status else 'disconnected' }}">
-                    {{ 'Verbunden' if db_status else 'Getrennt' }}
-                </span>
-            </div>
-            <table class="data-table" id="data-table">
-                <thead>
-                    <tr>
-                        <th>Datum</th>
-                        <th>Mitarbeiter</th>
-                        <th>Stunden</th>
-                        <th>Projekt</th>
-                    </tr>
-                </thead>
-                <tbody id="data-table-body">
-                    <!-- Daten werden dynamisch per JavaScript geladen -->
-                </tbody>
-            </table>
-        </div>
     </main>
 
     <script>
         // Lädt Daten beim Seitenaufruf
         document.addEventListener('DOMContentLoaded', function() {
-            filterData();
+            resetProgressbar();
+            // filterData(); // Automatisches Laden entfernt, nur auf Button-Klick
         });
+        
+        // Progressbar-Animationsfunktionen
+        function startLoadingAnimation() {
+            const progressFill = document.getElementById('progress-fill');
+            const progressLabel = document.getElementById('progress-label');
+            
+            progressLabel.textContent = 'Lade Daten...';
+            progressFill.style.width = '0%';
+            progressFill.style.background = 'linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%)';
+            
+            // Animiere Progressbar von 0% zu 90%
+            let width = 0;
+            const interval = setInterval(() => {
+                width += 2;
+                progressFill.style.width = width + '%';
+                
+                if (width >= 90) {
+                    clearInterval(interval);
+                }
+            }, 20);
+        }
+        
+        function completeLoadingAnimation(recordCount) {
+            const progressFill = document.getElementById('progress-fill');
+            const progressLabel = document.getElementById('progress-label');
+            
+            // Komplettiere auf 100%
+            progressFill.style.width = '100%';
+            progressFill.style.background = 'linear-gradient(90deg, #10b981 0%, #34d399 100%)';
+            progressLabel.textContent = `Erfolgreich geladen - ${recordCount} Datensätze`;
+            
+            // Nach 2 Sekunden zurück zum Normalzustand
+            setTimeout(() => {
+                resetProgressbar();
+            }, 2000);
+        }
+        
+        function errorLoadingAnimation() {
+            const progressFill = document.getElementById('progress-fill');
+            const progressLabel = document.getElementById('progress-label');
+            
+            progressFill.style.width = '100%';
+            progressFill.style.background = 'linear-gradient(90deg, #ef4444 0%, #f87171 100%)';
+            progressLabel.textContent = 'Fehler beim Laden der Daten';
+            
+            // Nach 3 Sekunden zurück zum Normalzustand
+            setTimeout(() => {
+                resetProgressbar();
+            }, 3000);
+        }
+        
+        function resetProgressbar() {
+            const progressFill = document.getElementById('progress-fill');
+            const progressLabel = document.getElementById('progress-label');
+            
+            progressFill.style.width = '100%';
+            progressFill.style.background = 'linear-gradient(90deg, #10b981 0%, #34d399 100%)';
+            progressLabel.textContent = 'Bereit zum Laden';
+        }
 
         function filterData() {
             const company = document.getElementById('company-select').value;
             const employee = document.getElementById('employee-select').value;
             const dateFrom = document.getElementById('date-from').value;
             const dateTo = document.getElementById('date-to').value;
+            
+            // Starte Ladeanimation
+            startLoadingAnimation();
+            
+            // Button während Ladevorgang deaktivieren
+            const loadButton = event?.target;
+            if (loadButton && loadButton.textContent.includes('Daten laden')) {
+                loadButton.disabled = true;
+                loadButton.textContent = 'Lädt...';
+            }
             
             // API-Call zum Laden der gefilterten Daten
             const params = new URLSearchParams();
@@ -213,12 +250,26 @@
             if (dateTo) params.append('date_to', dateTo);
             
             fetch(`/api/data?${params}`)
-                .then(response => response.json())
+                .then(response => {
+                    // Simuliere realistischen Ladevorgang
+                    return new Promise(resolve => {
+                        setTimeout(() => resolve(response.json()), 800);
+                    });
+                })
                 .then(data => {
                     updateTable(data);
+                    completeLoadingAnimation(data.length || 0);
                 })
                 .catch(error => {
                     console.error('Error loading data:', error);
+                    errorLoadingAnimation();
+                })
+                .finally(() => {
+                    // Button wieder aktivieren
+                    if (loadButton && loadButton.textContent.includes('Lädt')) {
+                        loadButton.disabled = false;
+                        loadButton.innerHTML = 'Daten laden';
+                    }
                 });
         }
 
@@ -231,7 +282,10 @@
                 return;
             }
             
-            data.forEach(row => {
+            // Animiere das Einfügen der Zeilen
+            let delay = 0;
+            
+            data.forEach((row, index) => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${row.date || ''}</td>
@@ -239,7 +293,21 @@
                     <td>${row.hours || ''}</td>
                     <td>${row.project || ''}</td>
                 `;
+                
+                // Sanfte Animation für jede Zeile
+                tr.style.opacity = '0';
+                tr.style.transform = 'translateY(10px)';
+                tr.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                
                 tbody.appendChild(tr);
+                
+                // Verzögerte Animation für gestaffelten Effekt
+                setTimeout(() => {
+                    tr.style.opacity = '1';
+                    tr.style.transform = 'translateY(0)';
+                }, delay);
+                
+                delay += 50; // 50ms Verzögerung zwischen den Zeilen
             });
         }
 
@@ -279,23 +347,17 @@
 
     <!-- Footer -->
     <footer class="footer">
-        <div class="footer-container">
-            <div class="footer-section">
-                <h3>Impressum</h3>
-                <p>
-                    <strong>McTimeTV powered by Infocom GmbH</strong><br>
-                    Icon Tower 9, 9. Stock<br>
-                    AT-1100 Wien<br>
-                    Copyright © 2014 - 2025
-                </p>
+        <div class="footer-container" style="display: flex; justify-content: center; align-items: center; gap: 32px; flex-wrap: wrap;">
+            <div style="text-align: center;">
+                <h4 style="margin: 0 0 8px 0; color: #374151; font-size: 16px;">Rechtliches</h4>
+                <a href="https://mctime.com/de/legal/impressum/" target="_blank" style="color: #6b7280; text-decoration: none; font-size: 14px;">Impressum</a>
             </div>
-            <div class="footer-section">
-                <h3>Technischer Support</h3>
-                <p>
-                    <strong>Support:</strong> <a href="mailto:support@mctime.com">support@mctime.com</a><br>
-                    <strong>API-Dokumentation:</strong> <a href="#" onclick="alert('API-Dokumentation wird bereitgestellt')">API-Docs</a><br>
-                    <strong>System:</strong> Mc-Time API Data Bridge v2.0
-                </p>
+            <div style="text-align: center;">
+                <h4 style="margin: 0 0 8px 0; color: #374151; font-size: 16px;">Technischer Support</h4>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <a href="mailto:support@mctime.com" style="color: #6b7280; text-decoration: none; font-size: 14px;">support@mctime.com</a>
+                    <span style="color: #9ca3af; font-size: 12px;">Mc-Time API Data Bridge v2.0</span>
+                </div>
             </div>
         </div>
     </footer>
