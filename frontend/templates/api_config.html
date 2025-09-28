@@ -3,47 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Middleware Konfiguration - Mc-Time API Data Bridge</title>
+    <title>API Konfiguration - McTime Data Bridge</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='mctime_icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="container">
-        <div class="nav-header">
-            <h1>Middleware Konfiguration</h1>
-            <a href="{{ url_for('home') }}" class="nav-btn">← Zurück zur Hauptseite</a>
+    <!-- Modern Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo-section">
+                <img src="{{ url_for('static', filename='mctime_logo.png') }}" alt="mc time" class="logo">
+                <span class="logo-text">mc time</span>
+            </div>
+            <div class="slogan">
+                Daten — Datentransparenz & Konsistenz, unser Ding
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Sidebar -->
+    <nav class="sidebar">
+        <div class="nav-icon" title="Home" onclick="window.location.href = '{{ url_for('home') }}'">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+            </svg>
+        </div>
+        <div class="nav-icon" title="Charts">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L3.5 15.9z"/>
+            </svg>
+        </div>
+        <div class="nav-icon" title="Time">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z"/>
+            </svg>
+        </div>
+        <div class="nav-icon active" title="Profile">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/>
+            </svg>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Page Header with Progress -->
+        <div class="page-header">
+            <h1 class="page-title">API Konfiguration</h1>
+            <div class="progress-container">
+                <div class="progress-label">McTime Data API Bridge</div>
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+            </div>
         </div>
 
-        <section class="sector">
-            <h2>Middleware Status</h2>
-            <div id="middleware-status-container">
-                <!-- Wird dynamisch mit JavaScript gefüllt -->
+        <!-- Cards Grid -->
+        <div class="content-grid">
+            <!-- Status Card -->
+            <div class="card">
+                <h2 class="card-title">Middleware Status</h2>
+                <div id="middleware-status-container">
+                    <div class="status-container">
+                        <span>Middleware Status:</span>
+                        <span class="status-indicator connected">Dummy-Modus aktiv</span>
+                    </div>
+                </div>
             </div>
-        </section>
 
-        <section class="sector">
-            <h2>Middleware Verbindungstest</h2>
-            <div class="test-container">
-                <button onclick="testMiddlewareConnection()" class="test-btn">Middleware-Verbindung testen</button>
+            <!-- Test Card -->
+            <div class="card">
+                <h2 class="card-title">Verbindungstest</h2>
+                <button onclick="testMiddlewareConnection()" class="btn btn-primary">
+                    <svg class="icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                        <path d="M12,2C13.1,2 14,2.9 14,4C14,5.1 13.1,6 12,6C10.9,6 10,5.1 10,4C10,2.9 10.9,2 12,2M21,9V7L15,1V3H9V1L3,7V9H1V11H3L4,21H20L21,11H23V9M19,19H5L4.2,11H19.8L19,19Z"/>
+                    </svg>
+                    Middleware-Verbindung testen
+                </button>
+                <div id="test-results" style="margin-top: 16px;"></div>
             </div>
-            <div id="test-results"></div>
-        </section>
+        </div>
 
-        <section class="sector">
-            <h2>Produktions-Modus</h2>
-            <p class="info-text">
+        <!-- Production Mode Card -->
+        <div class="card">
+            <h2 class="card-title">Produktions-Modus</h2>
+            <p style="color: #6b7280; margin-bottom: 20px;">
                 Aktuell läuft das Frontend im <strong>Dummy-Modus</strong> für Entwicklungszwecke.
                 Sobald die Middleware verfügbar ist, kann hier auf den Produktions-Modus gewechselt werden.
             </p>
-            <div class="production-container">
-                <input type="text" id="middleware-url" placeholder="Middleware URL (z.B. http://localhost:8080/api)" class="url-input">
-                <button onclick="switchToProduction()" class="production-btn" disabled>Produktions-Modus aktivieren</button>
+            <div class="form-group">
+                <label class="form-label" for="middleware-url">Middleware URL</label>
+                <input type="text" id="middleware-url" class="form-input" placeholder="z.B. http://localhost:8080/api">
             </div>
-            <p class="note">
+            <button onclick="switchToProduction()" class="btn btn-secondary" disabled style="margin-top: 16px;">
+                Produktions-Modus aktivieren
+            </button>
+            <p style="font-size: 14px; color: #6b7280; margin-top: 12px;">
                 <strong>Hinweis:</strong> Diese Funktion wird aktiviert, sobald die Middleware implementiert ist.
             </p>
-        </section>
-    </div>
+        </div>
+    </main>
 
     <script>
         // Lädt Middleware-Status beim Seitenaufruf
@@ -55,58 +114,65 @@
             fetch('/api/middleware/status')
                 .then(response => response.json())
                 .then(data => {
-                    displayMiddlewareStatus(data);
+                    const container = document.getElementById('middleware-status-container');
+                    container.innerHTML = `
+                        <div class="status-container">
+                            <span>Middleware Status:</span>
+                            <span class="status-indicator ${data.connected ? 'connected' : 'disconnected'}">
+                                ${data.connected ? 'Verbunden' : 'Getrennt'}
+                            </span>
+                        </div>
+                        <div style="margin-top: 12px; font-size: 14px; color: #6b7280;">
+                            URL: ${data.url || 'Nicht konfiguriert'}<br>
+                            Modus: ${data.dummy_mode ? 'Dummy-Modus' : 'Produktions-Modus'}
+                        </div>
+                    `;
                 })
                 .catch(error => {
-                    console.error('Fehler beim Laden des Middleware-Status:', error);
+                    console.error('Error loading middleware status:', error);
                 });
         }
 
-        function displayMiddlewareStatus(status) {
-            const container = document.getElementById('middleware-status-container');
-            
-            const statusClass = status.connected ? 'status-enabled' : 'status-disabled';
-            
-            container.innerHTML = `
-                <div class="middleware-status-item">
-                    <div class="middleware-info">
-                        <h3>Middleware Verbindung</h3>
-                        <p class="middleware-url">URL: ${status.middleware_url}</p>
-                        <p class="last-check">Letzter Check: ${status.last_check}</p>
-                        <span class="middleware-status ${statusClass}">${status.status}</span>
-                    </div>
-                </div>
-            `;
-        }
-
         function testMiddlewareConnection() {
+            const button = event.target;
             const resultsDiv = document.getElementById('test-results');
-            resultsDiv.innerHTML = '<p>Teste Middleware-Verbindung...</p>';
-
+            
+            button.disabled = true;
+            button.textContent = 'Teste Verbindung...';
+            
             fetch('/api/middleware/ping')
                 .then(response => response.json())
                 .then(data => {
-                    const statusClass = data.success ? 'test-success' : 'test-error';
                     resultsDiv.innerHTML = `
-                        <div class="test-result ${statusClass}">
-                            <p><strong>Ergebnis:</strong> ${data.message}</p>
-                            <p><strong>Antwortzeit:</strong> ${data.response_time}</p>
-                            <p><strong>Zeitstempel:</strong> ${data.timestamp}</p>
+                        <div class="test-result ${data.success ? 'success' : 'error'}">
+                            <strong>Testergebnis:</strong> ${data.message}<br>
+                            <small>Antwortzeit: ${data.response_time || 'N/A'}ms</small>
                         </div>
                     `;
                 })
                 .catch(error => {
                     resultsDiv.innerHTML = `
-                        <div class="test-result test-error">
-                            <p><strong>Fehler:</strong> ${error.message}</p>
+                        <div class="test-result error">
+                            <strong>Fehler:</strong> Verbindungstest fehlgeschlagen<br>
+                            <small>${error.message}</small>
                         </div>
+                    `;
+                })
+                .finally(() => {
+                    button.disabled = false;
+                    button.innerHTML = `
+                        <svg class="icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                            <path d="M12,2C13.1,2 14,2.9 14,4C14,5.1 13.1,6 12,6C10.9,6 10,5.1 10,4C10,2.9 10.9,2 12,2M21,9V7L15,1V3H9V1L3,7V9H1V11H3L4,21H20L21,11H23V9M19,19H5L4.2,11H19.8L19,19Z"/>
+                        </svg>
+                        Middleware-Verbindung testen
                     `;
                 });
         }
 
         function switchToProduction() {
-            const middlewareUrl = document.getElementById('middleware-url').value;
-            if (!middlewareUrl) {
+            const url = document.getElementById('middleware-url').value;
+            
+            if (!url) {
                 alert('Bitte gib die Middleware-URL ein.');
                 return;
             }
@@ -114,6 +180,27 @@
             // TODO: Implementierung wenn Middleware verfügbar ist
             alert('Produktions-Modus wird implementiert, sobald die Middleware verfügbar ist.');
         }
+
+        // Add test result styles
+        const style = document.createElement('style');
+        style.textContent = `
+            .test-result {
+                padding: 12px 16px;
+                border-radius: 6px;
+                font-size: 14px;
+            }
+            .test-result.success {
+                background: #dcfce7;
+                border: 1px solid #bbf7d0;
+                color: #166534;
+            }
+            .test-result.error {
+                background: #fee2e2;
+                border: 1px solid #fecaca;
+                color: #dc2626;
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 
     <!-- Footer -->
@@ -133,7 +220,7 @@
                 <p>
                     <strong>Support:</strong> <a href="mailto:support@mctime.com">support@mctime.com</a><br>
                     <strong>API-Dokumentation:</strong> <a href="#" onclick="alert('API-Dokumentation wird bereitgestellt')">API-Docs</a><br>
-                    <strong>System:</strong> Mc-Time API Data Bridge v1.0
+                    <strong>System:</strong> Mc-Time API Data Bridge v2.0
                 </p>
             </div>
         </div>

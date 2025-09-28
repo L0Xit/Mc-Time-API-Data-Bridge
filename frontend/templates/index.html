@@ -3,114 +3,202 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mc-Time API Data Bridge</title>
+    <title>McTime API Data Bridge</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='mctime_icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="container">
-        <!-- Sektor 1: Projektstatus -->
-        <section class="sector sector-1">
-            <div class="logo-container">
-                <img src="{{ url_for('static', filename='mctime_logo.png') }}" alt="Mc-Time Logo" class="logo">
+    <!-- Modern Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo-section">
+                <img src="{{ url_for('static', filename='mctime_logo.png') }}" alt="mc time" class="logo">
+                <span class="logo-text">mc time</span>
             </div>
-            <div class="status-container">
-                <span class="status-label">Datenbankverbindung:</span>
+            <div class="slogan">
+                Daten — Datentransparenz & Konsistenz, unser Ding
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Sidebar -->
+    <nav class="sidebar">
+        <div class="nav-icon active" title="Home">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+            </svg>
+        </div>
+        <div class="nav-icon" title="Charts">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L3.5 15.9z"/>
+            </svg>
+        </div>
+        <div class="nav-icon" title="Time">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z"/>
+            </svg>
+        </div>
+        <div class="nav-icon" title="Profile" onclick="window.location.href = '{{ url_for('api_config') }}'">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/>
+            </svg>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Page Header with Progress -->
+        <div class="page-header">
+            <h1 class="page-title">McTime Data API Bridge</h1>
+            <div class="progress-container">
+                <div class="progress-label">McTime Data API Bridge</div>
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Grid -->
+        <div class="content-grid">
+            <!-- Filter Card -->
+            <div class="card">
+                <h2 class="card-title">Datenfilter</h2>
+                <div class="filter-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="company-select">Firma:</label>
+                        <select id="company-select" name="company" class="form-select">
+                            <option value="">Bitte wählen...</option>
+                            {% for company in companies %}
+                            <option value="{{ company }}">{{ company }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="employee-select">Mitarbeiter:</label>
+                        <select id="employee-select" name="employee" class="form-select">
+                            <option value="">Bitte wählen...</option>
+                            {% for employee in employees %}
+                            <option value="{{ employee }}">{{ employee }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="date-from">Von:</label>
+                        <input type="date" id="date-from" name="date_from" class="form-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="date-to">Bis:</label>
+                        <input type="date" id="date-to" name="date_to" class="form-input">
+                    </div>
+                </div>
+                
+                <button class="btn btn-primary" onclick="filterData()" style="margin-top: 20px;">Daten laden</button>
+                <button class="btn btn-download" onclick="downloadCSV()" style="margin-top: 10px;">
+                    <svg class="icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                    </svg>
+                    CSV Download
+                </button>
+            </div>
+
+            <!-- Contact & Email Card -->
+            <div class="card">
+                <h2 class="card-title">Kontakt & Versand</h2>
+                <div class="email-form">
+                    <div class="form-group">
+                        <label class="form-label" for="email-input">Empfänger E-Mail</label>
+                        <input type="email" id="email-input" class="form-input" placeholder="empfaenger@email.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="subject-input">Betreff</label>
+                        <input type="text" id="subject-input" class="form-input" value="API Bridge-Daten">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Beschreibung</label>
+                        <p style="font-size: 14px; color: #6b7280;">Hier die API Bridge-Daten von Mc-Time als CSV-Datei senden.</p>
+                    </div>
+                    
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="attach-csv" class="checkbox" checked>
+                        <label for="attach-csv" style="font-size: 14px;">CSV automatisch anhängen</label>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="sendEmail()">Senden</button>
+                    
+                    <div id="success-message" class="success-message" style="display: none;">
+                        Nachricht wurde erfolgreich gesendet.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Extended Functions -->
+        <div class="extended-functions">
+            <h2 class="card-title">Erweiterte Funktionen</h2>
+            <div class="function-grid">
+                <div class="function-btn primary" onclick="filterData()">
+                    <svg class="icon" viewBox="0 0 24 24" style="width: 20px; height: 20px; margin-right: 8px;">
+                        <path d="M14,12V19.88C14.04,20.18 13.94,20.5 13.71,20.71C13.32,21.1 12.69,21.1 12.3,20.71L10.29,18.7C10.06,18.47 9.96,18.16 10,17.87V12H9.97L4.21,4.62C3.87,4.19 3.95,3.56 4.38,3.22C4.57,3.08 4.78,3 5,3V3H19V3C19.22,3 19.43,3.08 19.62,3.22C20.05,3.56 20.13,4.19 19.79,4.62L14.03,12H14Z"/>
+                    </svg>
+                    Daten filtern
+                </div>
+                <div class="function-btn secondary">
+                    <svg class="icon" viewBox="0 0 24 24" style="width: 20px; height: 20px; margin-right: 8px;">
+                        <path d="M14,17H7V15H14M17,13H7V11H17M17,9H7V7H17M19,3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3Z"/>
+                    </svg>
+                    Multi-Text
+                </div>
+                <div class="function-btn download" onclick="downloadCSV()">
+                    <svg class="icon" viewBox="0 0 24 24" style="width: 20px; height: 20px; margin-right: 8px;">
+                        <path d="M23,12L19,8V11H10V13H19V16M1,18V6C1,4.89 1.89,4 3,4H15A2,2 0 0,1 17,6V9H15V6H3V18H15V15H17V18A2,2 0 0,1 15,20H3C1.89,20 1,19.1 1,18Z"/>
+                    </svg>
+                    CSV via E-Mail
+                </div>
+                <div class="function-btn secondary">
+                    <svg class="icon" viewBox="0 0 24 24" style="width: 20px; height: 20px; margin-right: 8px;">
+                        <path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M11,16.5L6.5,12L7.91,10.59L11,13.67L16.59,8.09L18,9.5L11,16.5Z"/>
+                    </svg>
+                    Validierung
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="data-table-container">
+            <h2 class="card-title">Datenübersicht</h2>
+            <div class="status-container" style="margin-bottom: 20px;">
+                <span>Datenbankverbindung:</span>
                 <span class="status-indicator {{ 'connected' if db_status else 'disconnected' }}">
                     {{ 'Verbunden' if db_status else 'Getrennt' }}
                 </span>
             </div>
-            <div class="nav-buttons">
-                <a href="{{ url_for('api_config') }}" class="nav-btn">API Konfiguration</a>
-            </div>
-        </section>
-
-        <!-- Sektor 2: Filteroptionen -->
-        <section class="sector sector-2">
-            <h2>Datenfilter</h2>
-            <div class="filter-container">
-                <div class="filter-group">
-                    <label for="company-select">Firma:</label>
-                    <select id="company-select" name="company">
-                        <option value="">Bitte wählen...</option>
-                        {% for company in companies %}
-                        <option value="{{ company }}">{{ company }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <div class="filter-group">
-                    <label for="employee-select">Mitarbeiter:</label>
-                    <select id="employee-select" name="employee">
-                        <option value="">Bitte wählen...</option>
-                        {% for employee in employees %}
-                        <option value="{{ employee }}">{{ employee }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <div class="filter-group">
-                    <label for="date-from">Von:</label>
-                    <input type="date" id="date-from" name="date-from">
-                </div>
-                
-                <div class="filter-group">
-                    <label for="date-to">Bis:</label>
-                    <input type="date" id="date-to" name="date-to">
-                </div>
-                
-                <button class="filter-btn" onclick="filterData()">Daten laden</button>
-            </div>
-        </section>
-
-        <!-- Sektor 3: Datentabelle -->
-        <section class="sector sector-3">
-            <div class="table-header">
-                <h2>Datenübersicht</h2>
-                <button onclick="downloadCSV()" class="download-btn">CSV Download</button>
-            </div>
-            <div class="table-container">
-                <table id="data-table">
-                    <thead>
-                        <tr>
-                            <th>Datum</th>
-                            <th>Mitarbeiter</th>
-                            <th>Stunden</th>
-                            <th>Projekt</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>2025-01-01</td>
-                            <td>Max Mustermann</td>
-                            <td>8.0</td>
-                            <td>Projekt A</td>
-                        </tr>
-                        <tr>
-                            <td>2025-01-02</td>
-                            <td>Anna Schmidt</td>
-                            <td>7.5</td>
-                            <td>Projekt B</td>
-                        </tr>
-                        <tr>
-                            <td>2025-01-03</td>
-                            <td>Tom Wagner</td>
-                            <td>8.0</td>
-                            <td>Projekt A</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <!-- Sektor 4: Zukünftige Funktionen -->
-        <section class="sector sector-4">
-            <h2>Erweiterte Funktionen</h2>
-            <p class="placeholder-text">Hier werden zukünftige Features implementiert...</p>
-        </section>
-    </div>
+            <table class="data-table" id="data-table">
+                <thead>
+                    <tr>
+                        <th>Datum</th>
+                        <th>Mitarbeiter</th>
+                        <th>Stunden</th>
+                        <th>Projekt</th>
+                    </tr>
+                </thead>
+                <tbody id="data-table-body">
+                    <!-- Daten werden dynamisch per JavaScript geladen -->
+                </tbody>
+            </table>
+        </div>
+    </main>
 
     <script>
+        // Lädt Daten beim Seitenaufruf
+        document.addEventListener('DOMContentLoaded', function() {
+            filterData();
+        });
+
         function filterData() {
             const company = document.getElementById('company-select').value;
             const employee = document.getElementById('employee-select').value;
@@ -130,17 +218,16 @@
                     updateTable(data);
                 })
                 .catch(error => {
-                    console.error('Fehler beim Laden der Daten:', error);
-                    alert('Fehler beim Laden der Daten!');
+                    console.error('Error loading data:', error);
                 });
         }
 
         function updateTable(data) {
-            const tbody = document.querySelector('#data-table tbody');
+            const tbody = document.getElementById('data-table-body');
             tbody.innerHTML = '';
             
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4">Keine Daten gefunden</td></tr>';
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #6b7280;">Keine Daten verfügbar</td></tr>';
                 return;
             }
             
@@ -170,6 +257,24 @@
             
             window.location.href = `/download_csv?${params}`;
         }
+
+        // E-Mail-Versand Funktion
+        function sendEmail() {
+            const email = document.getElementById('email-input').value;
+            const subject = document.getElementById('subject-input').value;
+            
+            if (!email) {
+                alert('Bitte geben Sie eine E-Mail-Adresse ein.');
+                return;
+            }
+            
+            // Simuliere erfolgreiche E-Mail-Sendung
+            const successMsg = document.getElementById('success-message');
+            successMsg.style.display = 'block';
+            setTimeout(() => {
+                successMsg.style.display = 'none';
+            }, 3000);
+        }
     </script>
 
     <!-- Footer -->
@@ -189,7 +294,7 @@
                 <p>
                     <strong>Support:</strong> <a href="mailto:support@mctime.com">support@mctime.com</a><br>
                     <strong>API-Dokumentation:</strong> <a href="#" onclick="alert('API-Dokumentation wird bereitgestellt')">API-Docs</a><br>
-                    <strong>System:</strong> Mc-Time API Data Bridge v1.0
+                    <strong>System:</strong> Mc-Time API Data Bridge v2.0
                 </p>
             </div>
         </div>
