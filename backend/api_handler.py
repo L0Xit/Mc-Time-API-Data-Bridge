@@ -111,7 +111,9 @@ class McTimeAPI:
             total_break_time = timedelta()
             break_list = []
             
-            for break_item in time_record.get('breaks', []):
+            # Handle None breaks (fix for September 15th issue)
+            breaks = time_record.get('breaks') or []
+            for break_item in breaks:
                 try:
                     break_start = datetime.fromisoformat(break_item['from'].replace('Z', '+00:00'))
                     break_end = datetime.fromisoformat(break_item['to'].replace('Z', '+00:00'))
