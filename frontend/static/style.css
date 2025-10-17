@@ -22,8 +22,42 @@ body {
 /* Sektor 1: Projektstatus */
 .sector-1 {
     text-align: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    background: white;
+    color: #333;
+    border-top: 4px solid #3b6efd;
+    border-bottom: 2px solid #3b6efd;
+    position: relative;
+}
+
+.sector-1::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, #3b6efd 50%, transparent 100%);
+}
+
+.sector-1::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, #3b6efd 50%, transparent 100%);
+}
+
+.logo-container {
+    margin-bottom: 15px;
+}
+
+.logo {
+    max-height: 80px;
+    max-width: 300px;
+    height: auto;
+    width: auto;
 }
 
 .sector-1 h1 {
@@ -62,7 +96,7 @@ body {
 .sector-2 h2 {
     margin-top: 0;
     color: #2c3e50;
-    border-bottom: 2px solid #3498db;
+    border-bottom: 2px solid #3b6efd;
     padding-bottom: 10px;
 }
 
@@ -95,12 +129,12 @@ body {
 .filter-group select:focus,
 .filter-group input:focus {
     outline: none;
-    border-color: #3498db;
+    border-color: #3b6efd;
 }
 
 .filter-btn {
     padding: 10px 20px;
-    background: #3498db;
+    background: #3b6efd;
     color: white;
     border: none;
     border-radius: 4px;
@@ -110,7 +144,7 @@ body {
 }
 
 .filter-btn:hover {
-    background: #2980b9;
+    background: #2c5adb;
 }
 
 /* Sektor 3: Tabelle */
@@ -142,6 +176,7 @@ body {
     font-weight: bold;
     cursor: pointer;
     transition: background 0.3s;
+    font-size: 14px;
 }
 
 .download-btn {
@@ -226,7 +261,7 @@ body {
 .nav-btn {
     display: inline-block;
     padding: 8px 16px;
-    background: #3498db;
+    background: #3b6efd;
     color: white;
     text-decoration: none;
     border-radius: 4px;
@@ -236,7 +271,7 @@ body {
 }
 
 .nav-btn:hover {
-    background: #2980b9;
+    background: #2c5adb;
 }
 
 /* API Status Styling */
@@ -312,7 +347,7 @@ body {
 
 .test-btn {
     padding: 8px 16px;
-    background: #17a2b8;
+    background: #3b6efd;
     color: white;
     border: none;
     border-radius: 4px;
@@ -322,7 +357,7 @@ body {
 }
 
 .test-btn:hover {
-    background: #138496;
+    background: #2c5adb;
 }
 
 .test-result {
@@ -395,7 +430,7 @@ body {
 
 .url-input:focus {
     outline: none;
-    border-color: #3498db;
+    border-color: #3b6efd;
 }
 
 .production-btn {
@@ -461,5 +496,75 @@ body {
     .production-container {
         flex-direction: column;
         align-items: stretch;
+    }
+}
+
+/* Footer Styles */
+.footer {
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    margin-top: 40px;
+    padding: 25px 0 15px 0;
+    color: #6c757d;
+    font-size: 0.85em;
+}
+
+.footer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+    padding: 0 20px;
+}
+
+.footer-section h3 {
+    color: #495057;
+    margin-bottom: 12px;
+    font-size: 0.95em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.footer-section p {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.footer-section a {
+    color: #6c757d;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.footer-section a:hover {
+    color: #495057;
+}
+
+.footer-bottom {
+    background: #e9ecef;
+    color: #6c757d;
+    text-align: center;
+    padding: 12px 0;
+    margin-top: 15px;
+    font-size: 0.8em;
+}
+
+.footer-bottom p {
+    margin: 0;
+}
+
+/* Responsive Footer */
+@media (max-width: 768px) {
+    .footer-container {
+        grid-template-columns: 1fr;
+        gap: 15px;
+        padding: 0 15px;
+    }
+    
+    .footer {
+        margin-top: 20px;
+        padding: 20px 0 15px 0;
     }
 }
