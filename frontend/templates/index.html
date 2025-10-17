@@ -18,78 +18,44 @@
         </div>
     </header>
 
-    <!-- Sektor 2: Filteroptionen -->
-    <section class="sector sector-2">
-        <h2>Datenfilter</h2>
-        <div class="filter-container">
-            <div class="filter-group">
-                <label for="company-select">Firma:</label>
-                <select id="company-select" name="company">
-                    <option value="">Bitte wählen...</option>
-                    {% for company in companies %}
-                    <option value="{{ company.id if company is mapping else company }}">
-                        {{ company.name if company is mapping else company }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <div class="filter-group">
-                <label for="employee-select">Mitarbeiter:</label>
-                <select id="employee-select" name="employee">
-                    <option value="">Bitte wählen...</option>
-                    {% for employee in employees %}
-                    <option value="{{ employee.id if employee is mapping else employee }}">
-                        {{ employee.name if employee is mapping else employee }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <div class="filter-group">
-                <label for="date-from">Von:</label>
-                <input type="date" id="date-from" name="date-from">
-            </div>
-            
-            <div class="filter-group">
-                <label for="date-to">Bis:</label>
-                <input type="date" id="date-to" name="date-to">
-            </div>
-            
-            <button class="filter-btn" onclick="filterData()">Daten laden</button>
+    <!-- Navigation Sidebar -->
+    <nav class="sidebar">
+        <div class="nav-icon active" title="Home">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+            </svg>
         </div>
-    </section>
+        <div class="nav-icon" title="Charts">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L3.5 15.9z"/>
+            </svg>
+        </div>
+        <div class="nav-icon" title="Time">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z"/>
+            </svg>
+        </div>
+        <div class="nav-icon" title="Profile" onclick="window.location.href = '{{ url_for('api_config') }}'">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/>
+            </svg>
+        </div>
+    </nav>
 
-    <!-- Sektor 3: Datentabelle -->
-    <section class="sector sector-3">
-        <div class="table-header">
-            <h2>Datenübersicht</h2>
-            <div class="action-buttons">
-                <button onclick="downloadCSV()" class="download-btn">CSV Download</button>
-                <button onclick="sendEmail()" class="email-btn">E-Mail senden</button>
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Page Header with Progress -->
+        <div class="page-header">
+            <h1 class="page-title">McTime Data API Bridge</h1>
+            <div class="progress-container">
+                <div class="progress-label" id="progress-label">Bereit zum Laden</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
             </div>
         </div>
-        <div class="table-container">
-            <table id="data-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Datum</th>
-                        <th>Mitarbeiter</th>
-                        <th>Projekt</th>
-                        <th>Arbeitszeit</th>
-                        <th>Pausen</th>
-                        <th>Effektive Stunden</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Data will be populated by JavaScript when "Daten laden" is clicked -->
-                </tbody>
-            </table>
-        </div>
-    </section>
 
-    <!-- Content Grid -->
+        <!-- Content Grid -->
         <div class="content-grid">
             <!-- Filter Card -->
             <div class="card">
@@ -269,13 +235,19 @@
             // Validate required fields
             if (!employee || !dateFrom || !dateTo) {
                 alert('Bitte wählen Sie einen Mitarbeiter und geben Sie ein Datum von/bis an.');
+                errorLoadingAnimation();
                 return;
             }
             
-            // Show loading state
-            const button = document.querySelector('.filter-btn');
-            button.disabled = true;
-            button.textContent = 'Laden...';
+            // Starte Ladeanimation
+            startLoadingAnimation();
+            
+            // Button während Ladevorgang deaktivieren
+            const loadButton = event?.target;
+            if (loadButton && loadButton.textContent.includes('Daten laden')) {
+                loadButton.disabled = true;
+                loadButton.textContent = 'Lädt...';
+            }
             
             // Format dates for API (YYYY-MM-DD to DD.MM.YYYY)
             const formatDateForAPI = (dateStr) => {
@@ -292,7 +264,6 @@
                 bis: formatDateForAPI(dateTo)
             };
             
-            // Log what we're sending
             console.log('=== SENDING TO API ===');
             console.log('Form Data:', formData);
             
@@ -305,69 +276,64 @@
                 body: JSON.stringify(formData)
             })
                 .then(response => {
-                    console.log('=== API RESPONSE STATUS ===');
-                    console.log('Status:', response.status);
-                    console.log('Status Text:', response.statusText);
+                    console.log('API Response Status:', response.status);
                     return response.json();
                 })
                 .then(result => {
-                    console.log('=== API RESPONSE DATA ===');
-                    console.log('Full Response:', result);
+                    console.log('API Response Data:', result);
                     
-                    if (result.status === 'success') {
-                        console.log('Time Entries:', result.data.timeEntries);
-                        console.log('Number of entries:', result.data.timeEntries?.length || 0);
+                    if (result.status === 'success' && result.data && result.data.timeEntries) {
                         updateTable(result.data.timeEntries);
+                        completeLoadingAnimation(result.data.timeEntries.length || 0);
                     } else {
                         console.error('API Error:', result.message);
-                        alert('Fehler beim Laden der Daten: ' + result.message);
+                        updateTable([]);
+                        errorLoadingAnimation();
                     }
                 })
                 .catch(error => {
-                    console.error('Fehler beim Laden der Daten:', error);
-                    alert('Fehler beim Laden der Daten!');
+                    console.error('Error loading data:', error);
+                    updateTable([]);
+                    errorLoadingAnimation();
                 })
                 .finally(() => {
-                    // Reset button state
-                    button.disabled = false;
-                    button.textContent = 'Daten laden';
+                    // Button wieder aktivieren
+                    if (loadButton && loadButton.textContent.includes('Lädt')) {
+                        loadButton.disabled = false;
+                        loadButton.innerHTML = 'Daten laden';
+                    }
                 });
         }
 
-        function updateTable(timeEntries) {
-            const tbody = document.querySelector('#data-table tbody');
+        function updateTable(data) {
+            const tbody = document.getElementById('data-table-body');
             tbody.innerHTML = '';
             
             console.log('=== UPDATING TABLE ===');
-            console.log('Time entries received:', timeEntries);
+            console.log('Time entries received:', data);
             
-            if (!timeEntries || timeEntries.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7">Keine Zeiteinträge für den gewählten Zeitraum gefunden</td></tr>';
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #6b7280;">Keine Daten verfügbar</td></tr>';
                 return;
             }
             
-            timeEntries.forEach(entry => {
+            // Animiere das Einfügen der Zeilen
+            let delay = 0;
+            
+            data.forEach((entry, index) => {
                 const tr = document.createElement('tr');
                 
                 // Use enhanced data from backend
-                const entryId = entry.id ? entry.id.substring(0, 8) : 'Unknown'; // Show first 8 chars of ID
                 const date = entry.date_formatted || 'Unknown Date';
-                const userName = entry.name || 'Unknown User';
-                const project = entry.project || 'Unknown Project';
-                const workTime = entry.time_formatted || 'Unknown Time';
-                const breaks = entry.breaks_formatted || 'Keine Pausen';
-                const actualHours = entry.actual_work_hours ? `${entry.actual_work_hours}h` : '0h';
-                
-                console.log(`Entry: ID=${entryId}, Date=${date}, User='${userName}', Project='${project}', Hours=${actualHours}`);
+                const name = entry.name || 'Unknown';
+                const project = entry.project || entry.organizationName || 'Unknown Project';
+                const workHours = entry.actual_work_hours !== undefined ? entry.actual_work_hours.toFixed(2) + 'h' : '0.00h';
                 
                 tr.innerHTML = `
-                    <td>${entryId}</td>
                     <td>${date}</td>
-                    <td>${userName}</td>
+                    <td>${name}</td>
+                    <td>${workHours}</td>
                     <td>${project}</td>
-                    <td>${workTime}</td>
-                    <td>${breaks}</td>
-                    <td>${actualHours}</td>
                 `;
                 
                 // Sanfte Animation für jede Zeile
@@ -384,61 +350,6 @@
                 }, delay);
                 
                 delay += 50; // 50ms Verzögerung zwischen den Zeilen
-            });
-        }
-
-        function sendEmail() {
-            const employee = document.getElementById('employee-select').value;
-            const employeeName = document.getElementById('employee-select').selectedOptions[0]?.text || 'Unknown';
-            const dateFrom = document.getElementById('date-from').value;
-            const dateTo = document.getElementById('date-to').value;
-            
-            if (!employee) {
-                alert('Bitte wählen Sie einen Mitarbeiter aus.');
-                return;
-            }
-            
-            if (!dateFrom || !dateTo) {
-                alert('Bitte geben Sie einen Datumsbereich an.');
-                return;
-            }
-            
-            // Check if there's data in the table
-            const tableRows = document.querySelectorAll('#data-table tbody tr');
-            if (tableRows.length === 0 || tableRows[0].children.length === 1) {
-                alert('Keine Daten zum Versenden vorhanden. Bitte laden Sie zuerst die Daten.');
-                return;
-            }
-            
-            const button = event.target;
-            button.disabled = true;
-            button.textContent = 'Sende E-Mail...';
-            
-            const formData = new FormData();
-            formData.append('employee_id', employee);
-            formData.append('employee_name', employeeName);
-            formData.append('date_from', dateFrom);
-            formData.append('date_to', dateTo);
-            
-            fetch('/api/send-email', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(result => {
-                if (result.status === 'success') {
-                    alert(`E-Mail erfolgreich an ${result.email} gesendet!`);
-                } else {
-                    alert(`Fehler beim Senden der E-Mail: ${result.message}`);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Fehler beim Senden der E-Mail.');
-            })
-            .finally(() => {
-                button.disabled = false;
-                button.textContent = 'E-Mail senden';
             });
         }
 
@@ -459,20 +370,62 @@
 
         // E-Mail-Versand Funktion
         function sendEmail() {
-            const email = document.getElementById('email-input').value;
-            const subject = document.getElementById('subject-input').value;
+            const employee = document.getElementById('employee-select').value;
+            const dateFrom = document.getElementById('date-from').value;
+            const dateTo = document.getElementById('date-to').value;
+            const employeeName = document.getElementById('employee-select').selectedOptions[0]?.text || '';
             
-            if (!email) {
-                alert('Bitte geben Sie eine E-Mail-Adresse ein.');
+            if (!employee || !dateFrom || !dateTo) {
+                alert('Bitte wählen Sie zuerst Mitarbeiter und Zeitraum aus.');
                 return;
             }
             
-            // Simuliere erfolgreiche E-Mail-Sendung
-            const successMsg = document.getElementById('success-message');
-            successMsg.style.display = 'block';
-            setTimeout(() => {
-                successMsg.style.display = 'none';
-            }, 3000);
+            // Format dates for API (YYYY-MM-DD to DD.MM.YYYY)
+            const formatDateForAPI = (dateStr) => {
+                if (!dateStr) return '';
+                const [year, month, day] = dateStr.split('-');
+                return `${day}.${month}.${year}`;
+            };
+            
+            // Show loading state
+            const originalText = event?.target?.textContent || 'E-Mail senden';
+            if (event?.target) {
+                event.target.disabled = true;
+                event.target.textContent = 'Sende...';
+            }
+            
+            // Send email via API
+            const formData = new URLSearchParams();
+            formData.append('employee_id', employee);
+            formData.append('employee_name', employeeName);
+            formData.append('date_from', formatDateForAPI(dateFrom));
+            formData.append('date_to', formatDateForAPI(dateTo));
+            
+            fetch('/api/send-email', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: formData
+            })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.status === 'success') {
+                        alert(`E-Mail erfolgreich an ${result.email} gesendet!`);
+                    } else {
+                        alert('Fehler beim Senden der E-Mail: ' + result.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error sending email:', error);
+                    alert('Fehler beim Senden der E-Mail!');
+                })
+                .finally(() => {
+                    if (event?.target) {
+                        event.target.disabled = false;
+                        event.target.textContent = originalText;
+                    }
+                });
         }
     </script>
 
