@@ -73,7 +73,13 @@ def create_employee_variables(employees):
 
 # Example usage:
 if __name__ == "__main__":
-    api_key = "bvtA7WVi52MBmu69bRSEEWYSOggNSRKRXJxQc5bPmBPqBXhS"
+    import os
+    # SECURITY: Load API key from environment variable
+    api_key = os.getenv('MCTIME_API_KEY')
+    if not api_key:
+        print("ERROR: MCTIME_API_KEY environment variable not set!")
+        print("Please set it in your .env file")
+        exit(1)
     employees = get_employee_list(api_key)
     
     # Create individual variables for each employee

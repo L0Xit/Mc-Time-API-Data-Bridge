@@ -318,8 +318,15 @@ class BackendService:
 
 # Example usage and testing
 if __name__ == "__main__":
-    # Initialize service
-    api_key = "bvtA7WVi52MBmu69bRSEEWYSOggNSRKRXJxQc5bPmBPqBXhS"
+    # Initialize service - NEVER hardcode API keys!
+    # Use environment variables instead
+    import os
+    api_key = os.getenv('MCTIME_API_KEY', '')
+    if not api_key:
+        print("ERROR: MCTIME_API_KEY environment variable not set!")
+        print("Please set it in your .env file or export it:")
+        print("  export MCTIME_API_KEY='your-api-key-here'")
+        exit(1)
     backend_service = BackendService(api_key)
     
     # Test getting form data

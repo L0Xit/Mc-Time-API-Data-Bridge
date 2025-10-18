@@ -1,5 +1,13 @@
 # TGM-Adapter Requirements
-# Add your Python package dependencies here
-# Example:
-# requests>=2.25.0
-# flask>=2.0.0
+
+# Web Framework
+flask>=2.0.0
+
+# HTTP Requests
+requests>=2.25.0
+
+# Environment Variables (SECURITY)
+python-dotenv>=0.19.0
+
+# Email (built-in with Python)
+# smtplib, email.mime - included in standard library

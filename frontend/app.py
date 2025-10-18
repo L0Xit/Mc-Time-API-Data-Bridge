@@ -23,13 +23,21 @@ except ImportError:
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
 # Initialize backend service for McTime API
-API_KEY = "bvtA7WVi52MBmu69bRSEEWYSOggNSRKRXJxQc5bPmBPqBXhS"
-backend_service = BackendService(API_KEY)
+# SECURITY: Load API key from environment variable, never hardcode it!
+API_KEY = os.getenv('MCTIME_API_KEY')
+if not API_KEY:
+    print("WARNING: MCTIME_API_KEY environment variable not set!")
+    print("Please configure your .env file with MCTIME_API_KEY")
+    
+backend_service = BackendService(API_KEY) if API_KEY else None
 
 @app.route('/')
 def home():
     # Get data from McTime API via backend service
     try:
+        if not backend_service:
+            raise Exception("Backend service not initialized - check MCTIME_API_KEY")
+            
         form_data = backend_service.get_form_data()
         companies = form_data.get('organizations', [])
         employees = form_data.get('employees', [])
@@ -251,12 +259,19 @@ def send_time_report_email(email, employee_name, time_entries, date_from, date_t
 def send_real_email_smtp(to_email, subject, body_html):
     """Send email using SMTP with TLS (exact user specifications)"""
     try:
-        smtp_server = os.getenv('SMTP_SERVER', 'email-smtp.eu-west-1.amazonaws.com')
+        # SECURITY: All credentials MUST come from environment variables
+        smtp_server = os.getenv('SMTP_SERVER')
         smtp_port = int(os.getenv('SMTP_PORT', 587))
-        smtp_username = os.getenv('SMTP_USERNAME', 'AKIA3O74MZU7UX272LKI')
-        smtp_password = os.getenv('SMTP_PASSWORD', 'BN8dXZgLjEP/3g0q2keO5TFsQkBeJQUUUdGGvB+n9A/E')
-        from_email = os.getenv('SENDER_EMAIL', 'noreply@mctime.com')
+        smtp_username = os.getenv('SMTP_USERNAME')
+        smtp_password = os.getenv('SMTP_PASSWORD')
+        from_email = os.getenv('SENDER_EMAIL')
         use_tls = os.getenv('USE_TLS', 'true').lower() == 'true'
+        
+        # Validate required credentials
+        if not all([smtp_server, smtp_username, smtp_password, from_email]):
+            print("ERROR: Missing required SMTP environment variables!")
+            print("Please configure: SMTP_SERVER, SMTP_USERNAME, SMTP_PASSWORD, SENDER_EMAIL")
+            return False
         
         print("=== SENDING REAL EMAIL ===")
         print(f"SMTP Server: {smtp_server}:{smtp_port}")
