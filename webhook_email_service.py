@@ -28,7 +28,7 @@ def send_email_webhook():
                 return jsonify({'error': f'Missing required field: {field}'}), 400
         
         # Verify webhook token (optional security)
-        expected_token = os.environ.get('WEBHOOK_TOKEN', 'test-token')
+        expected_token = os.environ.get('WEBHOOK_TOKEN')
         provided_token = data.get('token', '')
         
         if expected_token and provided_token != expected_token:
