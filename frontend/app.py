@@ -145,6 +145,15 @@ def send_email():
                 'status': 'error',
                 'message': 'Fehlende Parameter: employee_id, date_from, date_to erforderlich'
             })
+
+        # Convert date format from dd.mm.yyyy to yyyy-mm-dd if needed
+        try:
+            if '.' in date_from:
+                date_from = backend_service._convert_date_format(date_from)
+            if '.' in date_to:
+                date_to = backend_service._convert_date_format(date_to)
+        except Exception as e:
+            print(f"Date conversion error: {e}")
         
         # Get employee email
         employee_email = backend_service.mctime_api.get_user_email_by_id(employee_id)
