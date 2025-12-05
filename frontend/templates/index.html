@@ -66,7 +66,9 @@
                         <select id="company-select" name="company" class="form-select">
                             <option value="">Bitte wählen...</option>
                             {% for company in companies %}
-                            <option value="{{ company }}">{{ company }}</option>
+                            <option value="{{ company.id if company is mapping else company }}">
+                                {{ company.name if company is mapping else company }}
+                            </option>
                             {% endfor %}
                         </select>
                     </div>
@@ -76,7 +78,9 @@
                         <select id="employee-select" name="employee" class="form-select">
                             <option value="">Bitte wählen...</option>
                             {% for employee in employees %}
-                            <option value="{{ employee }}">{{ employee }}</option>
+                            <option value="{{ employee.id if employee is mapping else employee }}">
+                                {{ employee.name if employee is mapping else employee }}
+                            </option>
                             {% endfor %}
                         </select>
                     </div>
@@ -112,10 +116,18 @@
                     <table class="data-table" id="data-table">
                         <thead>
                             <tr>
+                                <th>Personalnr.</th>
+                                <th>Vorname</th>
+                                <th>Nachname</th>
                                 <th>Datum</th>
-                                <th>Mitarbeiter</th>
-                                <th>Stunden</th>
+                                <th>Type</th>
+                                <th>Beginn</th>
+                                <th>Ende</th>
+                                <th>Pause</th>
+                                <th>Mit Pause</th>
+                                <th>Ohne Pause</th>
                                 <th>Projekt</th>
+                                <th>Kommentar</th>
                             </tr>
                         </thead>
                         <tbody id="data-table-body">
@@ -130,18 +142,18 @@
                 <h2 class="card-title">Kontakt & Versand</h2>
                 <div class="email-form">
                     <div class="form-group">
-                        <label class="form-label" for="email-input">Empfänger E-Mail</label>
-                        <input type="email" id="email-input" class="form-input" placeholder="empfaenger@email.com">
+                        <label class="form-label" for="email-to">Empfänger E-Mail:</label>
+                        <input type="email" id="email-to" name="email_to" class="form-input" placeholder="empfaenger@example.com" required>
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label" for="subject-input">Betreff</label>
-                        <input type="text" id="subject-input" class="form-input" value="API Bridge-Daten">
+                        <label class="form-label" for="email-subject">Betreff:</label>
+                        <input type="text" id="email-subject" name="email_subject" class="form-input" placeholder="Zeiterfassung Export" value="McTime Zeitdaten Export">
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label">Beschreibung</label>
-                        <p style="font-size: 14px; color: #6b7280;">Hier die API Bridge-Daten von Mc-Time als CSV-Datei senden.</p>
+                        <label class="form-label" for="email-message">Nachricht:</label>
+                        <textarea id="email-message" name="email_message" class="form-input" rows="4" placeholder="Ihre Nachricht...">Anbei die angeforderten Zeiterfassungsdaten als CSV-Datei.</textarea>
                     </div>
                     
                     <div class="checkbox-group">
@@ -313,7 +325,7 @@
             console.log('Time entries received:', data);
             
             if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #6b7280;">Keine Daten verfügbar</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: #6b7280;">Keine Daten verfügbar</td></tr>';
                 return;
             }
             
@@ -323,17 +335,33 @@
             data.forEach((entry, index) => {
                 const tr = document.createElement('tr');
                 
-                // Use enhanced data from backend
-                const date = entry.date_formatted || 'Unknown Date';
-                const name = entry.name || 'Unknown';
-                const project = entry.project || entry.organizationName || 'Unknown Project';
-                const workHours = entry.actual_work_hours !== undefined ? entry.actual_work_hours.toFixed(2) + 'h' : '0.00h';
+                // WorkExpert format fields
+                const personalnummer = entry.personalnummer || entry.id || '';
+                const firstName = entry.firstName || '';
+                const lastName = entry.lastName || '';
+                const date = entry.date_formatted || 'N/A';
+                const type = entry.type || 'Arbeitszeit';
+                const startTime = entry.start_time || '';
+                const endTime = entry.end_time || '';
+                const pause = entry.pause || '';
+                const summeMitPause = entry.summe_mit_pause || '';
+                const summeOhnePause = entry.summe_ohne_pause || '';
+                const project = entry.project || entry.organizationName || '';
+                const kommentar = entry.kommentar || '';
                 
                 tr.innerHTML = `
+                    <td>${personalnummer}</td>
+                    <td>${firstName}</td>
+                    <td>${lastName}</td>
                     <td>${date}</td>
-                    <td>${name}</td>
-                    <td>${workHours}</td>
+                    <td>${type}</td>
+                    <td>${startTime}</td>
+                    <td>${endTime}</td>
+                    <td>${pause}</td>
+                    <td>${summeMitPause}</td>
+                    <td>${summeOhnePause}</td>
                     <td>${project}</td>
+                    <td>${kommentar}</td>
                 `;
                 
                 // Sanfte Animation für jede Zeile
@@ -370,13 +398,29 @@
 
         // E-Mail-Versand Funktion
         function sendEmail() {
+            const emailTo = document.getElementById('email-to').value;
+            const emailSubject = document.getElementById('email-subject').value;
+            const emailMessage = document.getElementById('email-message').value;
+            const attachCsv = document.getElementById('attach-csv').checked;
+            
             const employee = document.getElementById('employee-select').value;
             const dateFrom = document.getElementById('date-from').value;
             const dateTo = document.getElementById('date-to').value;
             const employeeName = document.getElementById('employee-select').selectedOptions[0]?.text || '';
             
-            if (!employee || !dateFrom || !dateTo) {
-                alert('Bitte wählen Sie zuerst Mitarbeiter und Zeitraum aus.');
+            // Validierung
+            if (!emailTo) {
+                alert('Bitte geben Sie eine Empfänger E-Mail-Adresse ein.');
+                return;
+            }
+            
+            if (!emailSubject) {
+                alert('Bitte geben Sie einen Betreff ein.');
+                return;
+            }
+            
+            if (attachCsv && (!employee || !dateFrom || !dateTo)) {
+                alert('Bitte wählen Sie Mitarbeiter und Zeitraum aus, wenn CSV angehängt werden soll.');
                 return;
             }
             
@@ -388,7 +432,7 @@
             };
             
             // Show loading state
-            const originalText = event?.target?.textContent || 'E-Mail senden';
+            const originalText = event?.target?.textContent || 'Senden';
             if (event?.target) {
                 event.target.disabled = true;
                 event.target.textContent = 'Sende...';
@@ -396,6 +440,10 @@
             
             // Send email via API
             const formData = new URLSearchParams();
+            formData.append('email_to', emailTo);
+            formData.append('email_subject', emailSubject);
+            formData.append('email_message', emailMessage);
+            formData.append('attach_csv', attachCsv);
             formData.append('employee_id', employee);
             formData.append('employee_name', employeeName);
             formData.append('date_from', formatDateForAPI(dateFrom));

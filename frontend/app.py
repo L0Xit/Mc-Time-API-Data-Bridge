@@ -6,11 +6,18 @@ import sys
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
+from datetime import datetime
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'backend'))
+# Pfade für Middleware und Backend hinzufügen
+_middleware_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'middleware'))
+_backend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend'))
+sys.path.insert(0, _middleware_path)
+sys.path.insert(0, _backend_path)
 
-from api_connector import middleware_connector
-from api_handler import BackendService
+# Middleware importieren - zentrale Schnittstelle
+from adapter import AdapterMiddleware
 
 # Load environment variables from .env file if it exists
 try:
@@ -22,23 +29,38 @@ except ImportError:
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
-# Initialize backend service for McTime API
-API_KEY = "bvtA7WVi52MBmu69bRSEEWYSOggNSRKRXJxQc5bPmBPqBXhS"
-backend_service = BackendService(API_KEY)
+# ============================================================================
+# MIDDLEWARE INITIALISIERUNG
+# ============================================================================
+# Alle API-Calls gehen durch die Middleware:
+# Frontend (app.py) → Middleware (adapter.py) → Backend (api_handler.py) → McTime API
+
+API_KEY = os.getenv('MCTIME_API_KEY')
+if not API_KEY:
+    print("WARNING: MCTIME_API_KEY environment variable not set!")
+    print("Please configure your .env file with MCTIME_API_KEY")
+
+# Middleware als zentrale Schnittstelle
+middleware = AdapterMiddleware(api_key=API_KEY)
+print("=" * 60)
+print("✅ Middleware initialisiert")
+print(f"   API-Key konfiguriert: {'Ja' if API_KEY else 'Nein'}")
+print("   Datenfluss: Frontend → Middleware → Backend → McTime API")
+print("=" * 60)
 
 @app.route('/')
 def home():
-    # Get data from McTime API via backend service
+    # Get data from McTime API via Middleware
     try:
-        form_data = backend_service.get_form_data()
+        form_data = middleware.get_form_data()
         companies = form_data.get('organizations', [])
         employees = form_data.get('employees', [])
-        connection_status = True if form_data.get('status') == 'success' else False
+        connection_status = form_data.get('status') == 'success'
     except Exception as e:
-        # Fallback to middleware connector if backend service fails
-        companies = [{'name': comp, 'id': comp} for comp in middleware_connector.get_companies()]
-        employees = middleware_connector.get_employees()
-        connection_status = middleware_connector.get_connection_status()['connected']
+        print(f"Middleware error: {e}")
+        companies = []
+        employees = []
+        connection_status = False
     
     return render_template('index.html', 
                          companies=companies, 
@@ -57,18 +79,21 @@ def page_1():
 @app.route('/api/middleware/status')
 def middleware_status():
     """Gibt den Status der Middleware-Verbindung zurück"""
-    return jsonify(middleware_connector.get_connection_status())
+    return jsonify(middleware.get_connection_status())
 
 @app.route('/api/middleware/ping')
 def ping_middleware():
     """Testet die Verbindung zur Middleware"""
-    result = middleware_connector.ping_middleware()
-    return jsonify(result)
+    is_valid = middleware.validate_api_key()
+    return jsonify({
+        'success': is_valid,
+        'message': 'Middleware verbunden' if is_valid else 'Verbindung fehlgeschlagen'
+    })
 
 @app.route('/api/load-data', methods=['POST'])
 def load_data():
     """
-    New endpoint for McTime API data loading
+    Lädt Zeitdaten über die Middleware
     Expected JSON payload:
     {
         "firma": "organization_id",
@@ -79,7 +104,7 @@ def load_data():
     """
     try:
         form_data = request.get_json()
-        print("=== BACKEND API CALL ===")
+        print("=== MIDDLEWARE API CALL ===")
         print(f"Received form_data: {form_data}")
         
         if not form_data:
@@ -89,95 +114,138 @@ def load_data():
                 "message": "No JSON data provided"
             }), 400
         
-        print("Processing form request...")
-        result = backend_service.process_form_request(form_data)
-        print(f"Backend result: {result}")
+        # Extrahiere Parameter
+        employee_id = form_data.get('mitarbeiter')
+        date_from = form_data.get('von')
+        date_to = form_data.get('bis')
+        organization_id = form_data.get('firma')
         
-        if result.get("status") == "error":
-            print(f"Backend returned error: {result.get('message')}")
-            return jsonify(result), 400
+        if not all([employee_id, date_from, date_to]):
+            return jsonify({
+                "status": "error",
+                "message": "Mitarbeiter, Von und Bis Datum erforderlich"
+            }), 400
         
-        print(f"Success! Returning {len(result.get('data', {}).get('timeEntries', []))} time entries")
-        return jsonify(result)
+        # Hole Daten über Middleware
+        time_entries = middleware.get_time_entries(
+            employee_id=employee_id,
+            date_from=date_from,
+            date_to=date_to,
+            organization_id=organization_id
+        )
+        
+        print(f"Success! Returning {len(time_entries)} time entries")
+        
+        return jsonify({
+            "status": "success",
+            "data": {
+                "timeEntries": time_entries
+            }
+        })
         
     except Exception as e:
+        print(f"Middleware error: {e}")
         return jsonify({
             "status": "error",
-            "message": f"Failed to process request: {str(e)}"
+            "message": f"Middleware-Fehler: {str(e)}"
         }), 500
 
 @app.route('/api/data')
 def get_data():
-    """Holt gefilterte Daten von der Middleware (legacy endpoint)"""
-    company = request.args.get('company')
+    """Holt gefilterte Daten von der Middleware"""
     employee = request.args.get('employee')
     date_from = request.args.get('date_from')
     date_to = request.args.get('date_to')
+    organization = request.args.get('company')
     
-    data = middleware_connector.get_time_data(
-        company=company,
-        employee=employee,
+    if not all([employee, date_from, date_to]):
+        return jsonify([])
+    
+    data = middleware.get_time_entries(
+        employee_id=employee,
         date_from=date_from,
-        date_to=date_to
+        date_to=date_to,
+        organization_id=organization
     )
     return jsonify(data)
 
 @app.route('/api/send-email', methods=['POST'])
 def send_email():
-    """Send time tracking data via email to employee"""
+    """Send time tracking data via email with custom recipient, subject and message"""
     try:
-        # Get form data
+        # Get form data - neue Felder
+        email_to = request.form.get('email_to')
+        email_subject = request.form.get('email_subject', 'McTime Zeitdaten Export')
+        email_message = request.form.get('email_message', '')
+        attach_csv = request.form.get('attach_csv', 'true').lower() == 'true'
+        
+        # Alte Felder für CSV-Daten
         employee_id = request.form.get('employee_id')
-        employee_name = request.form.get('employee_name')
+        employee_name = request.form.get('employee_name', '')
         date_from = request.form.get('date_from')
         date_to = request.form.get('date_to')
         
-        if not all([employee_id, date_from, date_to]):
+        # Validierung: E-Mail-Adresse erforderlich
+        if not email_to:
             return jsonify({
                 'status': 'error',
-                'message': 'Fehlende Parameter: employee_id, date_from, date_to erforderlich'
+                'message': 'Bitte geben Sie eine Empfänger E-Mail-Adresse ein'
             })
+
+        # CSV-Inhalt erstellen wenn gewünscht
+        csv_content = None
+        if attach_csv:
+            if not all([employee_id, date_from, date_to]):
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Für CSV-Anhang: Mitarbeiter und Zeitraum erforderlich'
+                })
+            
+            # Hole Zeitdaten über Middleware
+            time_entries = middleware.get_time_entries(
+                employee_id=employee_id, 
+                date_from=date_from, 
+                date_to=date_to
+            )
+            
+            if time_entries:
+                csv_content = create_csv_content(time_entries, employee_name)
         
-        # Get employee email
-        employee_email = backend_service.mctime_api.get_user_email_by_id(employee_id)
-        if not employee_email:
-            return jsonify({
-                'status': 'error',
-                'message': f'Keine E-Mail-Adresse für Mitarbeiter {employee_name} gefunden'
-            })
+        # HTML-Body erstellen
+        body_html = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2 style="color: #333;">McTime API Data Bridge</h2>
+            <div style="margin: 20px 0; padding: 15px; background-color: #f5f5f5; border-radius: 5px;">
+                <p>{email_message.replace(chr(10), '<br>')}</p>
+            </div>
+            <hr style="border: 1px solid #ddd;">
+            <p style="font-size: 12px; color: #666;">
+                Diese E-Mail wurde automatisch von der McTime API Data Bridge gesendet.
+            </p>
+        </body>
+        </html>
+        """
         
-        # Get time entries data
-        time_entries = backend_service.mctime_api.get_time_entries(
-            employee_id, 
-            date_from, 
-            date_to
-        )
-        
-        if not time_entries:
-            return jsonify({
-                'status': 'error',
-                'message': 'Keine Zeiteinträge für den angegebenen Zeitraum gefunden'
-            })
-        
-        # Send email
-        success = send_time_report_email(
-            employee_email, 
-            employee_name, 
-            time_entries, 
-            date_from, 
-            date_to
+        # E-Mail senden
+        success = send_real_email_smtp(
+            to_email=email_to,
+            subject=email_subject,
+            body_html=body_html,
+            csv_content=csv_content,
+            employee_name=employee_name
         )
         
         if success:
             return jsonify({
                 'status': 'success',
                 'message': 'E-Mail erfolgreich gesendet',
-                'email': employee_email
+                'email': email_to
             })
         else:
             return jsonify({
                 'status': 'error',
-                'message': 'Fehler beim Senden der E-Mail'
+                'message': 'Fehler beim Senden der E-Mail. Prüfen Sie die SMTP-Konfiguration.'
             })
             
     except Exception as e:
@@ -188,8 +256,7 @@ def send_email():
         })
 
 def send_time_report_email(email, employee_name, time_entries, date_from, date_to):
-    """Send time tracking report via email using SMTP"""
-    from datetime import datetime
+    """Send time tracking report via email using SMTP with CSV attachment"""
     
     try:
         # Create email content
@@ -199,7 +266,10 @@ def send_time_report_email(email, employee_name, time_entries, date_from, date_t
         total_work_hours = sum(entry.get('actual_work_hours', 0) for entry in time_entries)
         total_entries = len(time_entries)
         
-        # Create HTML email body
+        # Create CSV content for attachment
+        csv_content = create_csv_content(time_entries, employee_name)
+        
+        # Create HTML email body with WorkExpert format
         html_body = f"""
         <html>
         <body>
@@ -207,26 +277,33 @@ def send_time_report_email(email, employee_name, time_entries, date_from, date_t
             <p><strong>Zeitraum:</strong> {date_from} bis {date_to}</p>
             <p><strong>Gesamtanzahl Einträge:</strong> {total_entries}</p>
             <p><strong>Gesamte Arbeitsstunden:</strong> {total_work_hours:.2f}h</p>
+            <p><em>Die detaillierte Aufstellung finden Sie in der angehängten CSV-Datei.</em></p>
             
             <h3>Detaillierte Aufstellung:</h3>
             <table border="1" style="border-collapse: collapse; width: 100%;">
-                <tr>
-                    <th>Datum</th>
-                    <th>Projekt</th>
-                    <th>Arbeitszeit</th>
-                    <th>Pausen</th>
-                    <th>Effektive Stunden</th>
+                <tr style="background-color: #f0f0f0;">
+                    <th style="padding: 8px;">Datum</th>
+                    <th style="padding: 8px;">Type</th>
+                    <th style="padding: 8px;">Beginn</th>
+                    <th style="padding: 8px;">Ende</th>
+                    <th style="padding: 8px;">Pause</th>
+                    <th style="padding: 8px;">Mit Pause</th>
+                    <th style="padding: 8px;">Ohne Pause</th>
+                    <th style="padding: 8px;">Projekt</th>
                 </tr>
         """
         
         for entry in time_entries:
             html_body += f"""
                 <tr>
-                    <td>{entry.get('date_formatted', 'N/A')}</td>
-                    <td>{entry.get('project', 'N/A')}</td>
-                    <td>{entry.get('time_formatted', 'N/A')}</td>
-                    <td>{entry.get('breaks_formatted', 'N/A')}</td>
-                    <td>{entry.get('actual_work_hours', 0):.2f}h</td>
+                    <td style="padding: 8px;">{entry.get('date_formatted', 'N/A')}</td>
+                    <td style="padding: 8px;">{entry.get('type', 'Arbeitszeit')}</td>
+                    <td style="padding: 8px;">{entry.get('start_time', 'N/A')}</td>
+                    <td style="padding: 8px;">{entry.get('end_time', 'N/A')}</td>
+                    <td style="padding: 8px;">{entry.get('pause', '')}</td>
+                    <td style="padding: 8px;">{entry.get('summe_mit_pause', '')}</td>
+                    <td style="padding: 8px;">{entry.get('summe_ohne_pause', '')}</td>
+                    <td style="padding: 8px;">{entry.get('project', 'N/A')}</td>
                 </tr>
             """
         
@@ -238,25 +315,80 @@ def send_time_report_email(email, employee_name, time_entries, date_from, date_t
         </html>
         """
         
-        # Send email via SMTP with TLS (as specified)
-        print("Sending email via SMTP with TLS...")
-        success = send_real_email_smtp(email, subject, html_body)
+        # Send email via SMTP with TLS and CSV attachment
+        print("Sending email via SMTP with TLS and CSV attachment...")
+        success = send_real_email_smtp(to_email=email, subject=subject, body_html=html_body, csv_content=csv_content, employee_name=employee_name)
         
         return success
         
     except Exception as e:
         print(f"Error sending email: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
-def send_real_email_smtp(to_email, subject, body_html):
-    """Send email using SMTP with TLS (exact user specifications)"""
+
+def create_csv_content(time_entries, employee_name):
+    """Create CSV content from time entries in WorkExpert format"""
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=';')
+    
+    # Header
+    writer.writerow([
+        'Personalnummer',
+        'Vorname',
+        'Nachname',
+        'Datum',
+        'Type',
+        'Zeit Beginn',
+        'Zeit Ende',
+        'Pause',
+        'Summe mit Pause',
+        'Summe ohne Pause',
+        'Projektnummer',
+        'Auftragsnummer',
+        'Projekt / Gruppenname',
+        'Kommentar'
+    ])
+    
+    # Data rows
+    for entry in time_entries:
+        writer.writerow([
+            entry.get('personalnummer', entry.get('id', '')),
+            entry.get('firstName', ''),
+            entry.get('lastName', ''),
+            entry.get('date_formatted', ''),
+            entry.get('type', 'Arbeitszeit'),
+            entry.get('start_time', ''),
+            entry.get('end_time', ''),
+            entry.get('pause', ''),
+            entry.get('summe_mit_pause', ''),
+            entry.get('summe_ohne_pause', ''),
+            entry.get('projektnummer', ''),
+            entry.get('auftragsnummer', ''),
+            entry.get('project', ''),
+            entry.get('kommentar', '')
+        ])
+    
+    return output.getvalue()
+
+
+def send_real_email_smtp(to_email, subject, body_html, csv_content=None, employee_name=None):
+    """Send email using SMTP with TLS and optional CSV attachment"""
     try:
-        smtp_server = os.getenv('SMTP_SERVER', 'email-smtp.eu-west-1.amazonaws.com')
+        # SECURITY: All credentials MUST come from environment variables
+        smtp_server = os.getenv('SMTP_SERVER')
         smtp_port = int(os.getenv('SMTP_PORT', 587))
-        smtp_username = os.getenv('SMTP_USERNAME', 'AKIA3O74MZU7UX272LKI')
-        smtp_password = os.getenv('SMTP_PASSWORD', 'BN8dXZgLjEP/3g0q2keO5TFsQkBeJQUUUdGGvB+n9A/E')
-        from_email = os.getenv('SENDER_EMAIL', 'noreply@mctime.com')
+        smtp_username = os.getenv('SMTP_USERNAME')
+        smtp_password = os.getenv('SMTP_PASSWORD')
+        from_email = os.getenv('SENDER_EMAIL')
         use_tls = os.getenv('USE_TLS', 'true').lower() == 'true'
+        
+        # Validate required credentials
+        if not all([smtp_server, smtp_username, smtp_password, from_email]):
+            print("ERROR: Missing required SMTP environment variables!")
+            print("Please configure: SMTP_SERVER, SMTP_USERNAME, SMTP_PASSWORD, SENDER_EMAIL")
+            return False
         
         print("=== SENDING REAL EMAIL ===")
         print(f"SMTP Server: {smtp_server}:{smtp_port}")
@@ -265,9 +397,10 @@ def send_real_email_smtp(to_email, subject, body_html):
         print(f"Subject: {subject}")
         print(f"Username: {smtp_username}")
         print(f"Password: {'***'}")
+        print(f"CSV Attachment: {'Yes' if csv_content else 'No'}")
         
-        # Create message
-        msg = MIMEMultipart('alternative')
+        # Create message with mixed type for attachments
+        msg = MIMEMultipart('mixed')
         msg['Subject'] = subject
         msg['From'] = from_email
         msg['To'] = to_email
@@ -275,6 +408,23 @@ def send_real_email_smtp(to_email, subject, body_html):
         # Add HTML body
         html_part = MIMEText(body_html, 'html', 'utf-8')
         msg.attach(html_part)
+        
+        # Add CSV attachment if provided
+        if csv_content:
+            # Create CSV attachment
+            csv_attachment = MIMEBase('text', 'csv')
+            csv_attachment.set_payload(csv_content.encode('utf-8'))
+            encoders.encode_base64(csv_attachment)
+            
+            # Generate filename with employee name and date
+            filename = f"zeiterfassung_{employee_name.replace(' ', '_') if employee_name else 'export'}_{datetime.now().strftime('%Y%m%d')}.csv"
+            csv_attachment.add_header(
+                'Content-Disposition',
+                'attachment',
+                filename=filename
+            )
+            msg.attach(csv_attachment)
+            print(f"CSV attachment added: {filename}")
         
         print(f"TLS: {use_tls}")
         
@@ -293,7 +443,7 @@ def send_real_email_smtp(to_email, subject, body_html):
         server.send_message(msg)
         server.quit()
         
-        print("✅ Email sent successfully!")
+        print("✅ Email sent successfully with CSV attachment!")
         return True
         
     except smtplib.SMTPAuthenticationError as e:
@@ -313,52 +463,102 @@ def send_real_email_smtp(to_email, subject, body_html):
 
 @app.route('/download_csv')
 def download_csv():
+    """CSV Download im WorkExpert Format"""
     # Filter aus Request-Parametern holen
     company = request.args.get('company')
     employee = request.args.get('employee')
     date_from = request.args.get('date_from')
     date_to = request.args.get('date_to')
     
-    # Daten von Middleware Connector holen
-    data = middleware_connector.get_time_data(
-        company=company,
-        employee=employee,
-        date_from=date_from,
-        date_to=date_to
-    )
+    print(f"=== CSV DOWNLOAD (via Middleware) ===")
+    print(f"Company: {company}")
+    print(f"Employee: {employee}")
+    print(f"Date From: {date_from}")
+    print(f"Date To: {date_to}")
     
-    # CSV-Header erstellen
-    csv_data = [['Datum', 'Mitarbeiter', 'Stunden', 'Projekt', 'Firma', 'Beschreibung', 'Start', 'Ende']]
+    data = []
     
-    # Daten hinzufügen
+    # Zeitdaten über Middleware abrufen
+    if employee and date_from and date_to:
+        try:
+            # Datum konvertieren von YYYY-MM-DD zu DD.MM.YYYY
+            date_from_formatted = datetime.strptime(date_from, '%Y-%m-%d').strftime('%d.%m.%Y')
+            date_to_formatted = datetime.strptime(date_to, '%Y-%m-%d').strftime('%d.%m.%Y')
+            
+            print(f"Formatted dates: {date_from_formatted} - {date_to_formatted}")
+            
+            # Daten über Middleware holen
+            data = middleware.get_time_entries(
+                employee_id=employee,
+                date_from=date_from_formatted,
+                date_to=date_to_formatted,
+                organization_id=company if company else None
+            )
+            
+            print(f"Got {len(data)} time entries from middleware")
+            
+        except Exception as e:
+            print(f"Error getting data for CSV: {e}")
+            import traceback
+            traceback.print_exc()
+            data = []
+    else:
+        print("Missing required fields for CSV export")
+        data = []
+    
+    print(f"Total data entries for CSV: {len(data)}")
+    
+    # CSV-Header im WorkExpert Format erstellen
+    csv_data = [[
+        'Personalnummer',
+        'Vorname',
+        'Nachname',
+        'Datum',
+        'Type',
+        'Zeit Beginn',
+        'Zeit Ende',
+        'Pause',
+        'Summe mit Pause',
+        'Summe ohne Pause',
+        'Projektnummer',
+        'Auftragsnummer',
+        'Projekt / Gruppenname',
+        'Kommentar'
+    ]]
+    
+    # Daten im WorkExpert Format hinzufügen
     for row in data:
         csv_data.append([
-            row.get('date', ''),
-            row.get('employee', ''),
-            row.get('hours', ''),
-            row.get('project', ''),
-            row.get('company', ''),
-            row.get('description', ''),
+            row.get('personalnummer', row.get('id', '')),
+            row.get('firstName', ''),
+            row.get('lastName', ''),
+            row.get('date_formatted', row.get('date', '')),
+            row.get('type', 'Arbeitszeit'),
             row.get('start_time', ''),
-            row.get('end_time', '')
+            row.get('end_time', ''),
+            row.get('pause', ''),
+            row.get('summe_mit_pause', ''),
+            row.get('summe_ohne_pause', ''),
+            row.get('projektnummer', ''),
+            row.get('auftragsnummer', ''),
+            row.get('project', row.get('organizationName', '')),
+            row.get('kommentar', row.get('description', ''))
         ])
     
-    # CSV in Memory erstellen
+    # CSV in Memory erstellen (mit Semikolon als Trennzeichen für Excel)
     output = io.StringIO()
-    writer = csv.writer(output)
+    writer = csv.writer(output, delimiter=';')
     writer.writerows(csv_data)
     
     # Response erstellen
     response = Response(
         output.getvalue(),
         mimetype='text/csv',
-        headers={"Content-disposition": "attachment; filename=daten_export.csv"}
+        headers={"Content-disposition": "attachment; filename=zeiterfassung_export.csv"}
     )
     
     return response
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(debug=True, port=port)
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=True, port=port)

@@ -49,12 +49,18 @@ class McTimeAPI:
                     full_name = f"{user.get('firstName', '')} {user.get('lastName', '')}".strip()
                     if not full_name:
                         full_name = "Unknown User"
+                    
+                    # Personalnummer: Letzte 4 Zeichen der UUID (ohne Bindestriche)
+                    user_id = user.get("id", "")
+                    personalnummer = user_id.replace("-", "")[-4:].upper() if user_id else ""
+                    
                     employees.append({
                         "id": user.get("id"),
                         "name": full_name,
                         "firstName": user.get("firstName", ""),
                         "lastName": user.get("lastName", ""),
-                        "email": user.get("email")
+                        "email": user.get("email"),
+                        "personalnummer": personalnummer
                     })
                 return sorted(employees, key=lambda x: x["name"])
             else:
@@ -92,9 +98,31 @@ class McTimeAPI:
             print(f"Error getting user email: {e}")
             return ''
     
+    def _get_user_details_by_id(self, user_id: str) -> Dict:
+        """
+        Get full user details by ID from /users endpoint
+        Returns dict with firstName, lastName, personalnummer, email
+        """
+        try:
+            employees = self.get_employees()
+            for employee in employees:
+                if employee.get('id') == user_id:
+                    return {
+                        'firstName': employee.get('firstName', ''),
+                        'lastName': employee.get('lastName', ''),
+                        'personalnummer': employee.get('personalnummer', ''),  # Leer wenn nicht vorhanden
+                        'email': employee.get('email', ''),
+                        'name': employee.get('name', '')
+                    }
+            return {'firstName': '', 'lastName': '', 'personalnummer': '', 'email': '', 'name': ''}
+        except Exception as e:
+            print(f"Error getting user details: {e}")
+            return {'firstName': '', 'lastName': '', 'personalnummer': '', 'email': '', 'name': ''}
+    
     def _enhance_time_record(self, time_record: Dict) -> Dict:
         """
         Enhance time record with calculated work hours, formatted breaks, and project info
+        Uses WorkExpert CSV format structure
         """
         from datetime import datetime, timedelta
         
@@ -103,8 +131,9 @@ class McTimeAPI:
             start_time = datetime.fromisoformat(time_record['from'].replace('Z', '+00:00'))
             end_time = datetime.fromisoformat(time_record['to'].replace('Z', '+00:00'))
             
-            # Calculate total time
+            # Calculate total time in minutes
             total_time = end_time - start_time
+            total_minutes = int(total_time.total_seconds() / 60)
             total_hours = total_time.total_seconds() / 3600
             
             # Calculate break time
@@ -120,27 +149,50 @@ class McTimeAPI:
                     break_duration = break_end - break_start
                     total_break_time += break_duration
                     
-                    # Format break for display: "13:00-14:00 (1.0h)"
-                    break_hours = break_duration.total_seconds() / 3600
-                    break_str = f"{break_start.strftime('%H:%M')}-{break_end.strftime('%H:%M')} ({break_hours:.1f}h)"
+                    # Format break for WorkExpert: "13:00-14:00"
+                    break_str = f"{break_start.strftime('%H:%M')}-{break_end.strftime('%H:%M')}"
                     break_list.append(break_str)
                 except Exception as e:
                     print(f"Error processing break: {e}")
             
             # Calculate actual work hours
+            break_minutes = int(total_break_time.total_seconds() / 60)
             break_hours = total_break_time.total_seconds() / 3600
+            work_minutes = total_minutes - break_minutes
             actual_work_hours = total_hours - break_hours
             
-            # Add enhanced fields
+            # WorkExpert format fields
             time_record['project'] = time_record.get('organizationName', 'Unknown Project')
+            time_record['type'] = 'Arbeitszeit'  # Default type
+            
+            # Time calculations (decimal for internal use)
             time_record['total_hours'] = round(total_hours, 2)
             time_record['break_hours'] = round(break_hours, 2)
             time_record['actual_work_hours'] = round(actual_work_hours, 2)
+            
+            # WorkExpert format: HH:MM for summe fields
+            summe_mit_h = total_minutes // 60
+            summe_mit_m = total_minutes % 60
+            time_record['summe_mit_pause'] = f"{summe_mit_h:02d}:{summe_mit_m:02d}"
+            
+            summe_ohne_h = work_minutes // 60
+            summe_ohne_m = work_minutes % 60
+            time_record['summe_ohne_pause'] = f"{summe_ohne_h:02d}:{summe_ohne_m:02d}"
+            
+            # Pause formatted for WorkExpert (semicolon separated if multiple)
+            time_record['pause'] = ';'.join(break_list) if break_list else ''
             time_record['breaks_formatted'] = ', '.join(break_list) if break_list else 'Keine Pausen'
             
-            # Format date for display
-            time_record['date_formatted'] = start_time.strftime('%d.%m.%Y')
+            # Date and time formatting
+            time_record['date_formatted'] = start_time.strftime('%d.%m.%y')  # WorkExpert: dd.mm.yy
+            time_record['start_time'] = start_time.strftime('%H:%M')
+            time_record['end_time'] = end_time.strftime('%H:%M')
             time_record['time_formatted'] = f"{start_time.strftime('%H:%M')}-{end_time.strftime('%H:%M')}"
+            
+            # Empty fields for WorkExpert
+            time_record['projektnummer'] = time_record.get('projektnummer', '')
+            time_record['auftragsnummer'] = time_record.get('auftragsnummer', '')
+            time_record['kommentar'] = time_record.get('kommentar', '')
             
             return time_record
             
@@ -148,12 +200,21 @@ class McTimeAPI:
             print(f"Error enhancing time record: {e}")
             # Add default values if calculation fails
             time_record['project'] = time_record.get('organizationName', 'Unknown Project')
+            time_record['type'] = 'Arbeitszeit'
             time_record['total_hours'] = 0.0
             time_record['break_hours'] = 0.0
             time_record['actual_work_hours'] = 0.0
+            time_record['summe_mit_pause'] = '00:00'
+            time_record['summe_ohne_pause'] = '00:00'
+            time_record['pause'] = ''
             time_record['breaks_formatted'] = 'Fehler beim Berechnen'
             time_record['date_formatted'] = 'Unknown Date'
+            time_record['start_time'] = ''
+            time_record['end_time'] = ''
             time_record['time_formatted'] = 'Unknown Time'
+            time_record['projektnummer'] = ''
+            time_record['auftragsnummer'] = ''
+            time_record['kommentar'] = ''
             return time_record
     
     def get_time_entries(self, employee_id: str, date_from: str, date_to: str, organization_id: Optional[str] = None) -> List[Dict]:
@@ -194,8 +255,9 @@ class McTimeAPI:
                 time_entries = data.get("items", [])
                 all_times = []
                 
-                # Get user name from the /users endpoint (same as dropdown)
+                # Get user details from the /users endpoint (same as dropdown)
                 user_name = self.get_user_name_by_id(employee_id)
+                user_details = self._get_user_details_by_id(employee_id)
                 print(f"Got user name from /users endpoint: '{user_name}'")
                 
                 for item in time_entries:
@@ -207,9 +269,12 @@ class McTimeAPI:
                                 if 'times' in time_entry:
                                     # Extract individual time records
                                     for time_record in time_entry['times']:
-                                        # Add the user name from /users API (same as dropdown)
+                                        # Add the user details from /users API
                                         time_record['name'] = user_name
                                         time_record['id'] = employee_id
+                                        time_record['personalnummer'] = user_details.get('personalnummer', employee_id)
+                                        time_record['firstName'] = user_details.get('firstName', '')
+                                        time_record['lastName'] = user_details.get('lastName', '')
                                         
                                         # Calculate work hours and format breaks
                                         time_record = self._enhance_time_record(time_record)
