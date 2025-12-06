@@ -59,50 +59,110 @@
         <div class="content-grid">
             <!-- Filter Card -->
             <div class="card">
-                <h2 class="card-title">Datenfilter</h2>
-                <div class="filter-grid">
-                    <div class="form-group">
-                        <label class="form-label" for="company-select">Firma:</label>
-                        <select id="company-select" name="company" class="form-select">
-                            <option value="">Bitte wählen...</option>
-                            {% for company in companies %}
-                            <option value="{{ company.id if company is mapping else company }}">
-                                {{ company.name if company is mapping else company }}
-                            </option>
-                            {% endfor %}
-                        </select>
+                <h2 class="card-title">
+                    <svg class="title-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;">
+                        <path fill="currentColor" d="M14,12V19.88C14.04,20.18 13.94,20.5 13.71,20.71C13.32,21.1 12.69,21.1 12.3,20.71L10.29,18.7C10.06,18.47 9.96,18.16 10,17.87V12H9.97L4.21,4.62C3.87,4.19 3.95,3.56 4.38,3.22C4.57,3.08 4.78,3 5,3H19C19.22,3 19.43,3.08 19.62,3.22C20.05,3.56 20.13,4.19 19.79,4.62L14.03,12H14Z"/>
+                    </svg>
+                    Datenfilter
+                </h2>
+                
+                <div class="modern-filter-grid">
+                    <!-- Firma -->
+                    <div class="modern-form-group">
+                        <label class="modern-label" for="company-select">
+                            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                                <path fill="currentColor" d="M18,15H16V17H18M18,11H16V13H18M20,19H12V17H14V15H12V13H14V11H12V9H20M10,7H8V5H10M10,11H8V9H10M10,15H8V13H10M10,19H8V17H10M6,7H4V5H6M6,11H4V9H6M6,15H4V13H6M6,19H4V17H6M12,7V3H2V21H22V7H12Z"/>
+                            </svg>
+                            Firma
+                        </label>
+                        <div class="select-wrapper">
+                            <select id="company-select" name="company" class="modern-select">
+                                <option value="">Alle Firmen</option>
+                                {% for company in companies %}
+                                <option value="{{ company.id if company is mapping else company }}">
+                                    {{ company.name if company is mapping else company }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <svg class="select-arrow" viewBox="0 0 24 24">
+                                <path fill="currentColor" d="M7,10L12,15L17,10H7Z"/>
+                            </svg>
+                        </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label class="form-label" for="employee-select">Mitarbeiter:</label>
-                        <select id="employee-select" name="employee" class="form-select">
-                            <option value="">Bitte wählen...</option>
-                            {% for employee in employees %}
-                            <option value="{{ employee.id if employee is mapping else employee }}">
-                                {{ employee.name if employee is mapping else employee }}
-                            </option>
-                            {% endfor %}
-                        </select>
+                    <!-- Mitarbeiter -->
+                    <div class="modern-form-group">
+                        <label class="modern-label" for="employee-select">
+                            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                                <path fill="currentColor" d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/>
+                            </svg>
+                            Mitarbeiter
+                        </label>
+                        <div class="select-wrapper">
+                            <select id="employee-select" name="employee" class="modern-select">
+                                <option value="">Mitarbeiter wählen...</option>
+                                {% for employee in employees %}
+                                <option value="{{ employee.id if employee is mapping else employee }}">
+                                    {{ employee.name if employee is mapping else employee }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <svg class="select-arrow" viewBox="0 0 24 24">
+                                <path fill="currentColor" d="M7,10L12,15L17,10H7Z"/>
+                            </svg>
+                        </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label class="form-label" for="date-from">Von:</label>
-                        <input type="date" id="date-from" name="date_from" class="form-input">
+                    <!-- Zeitraum Von -->
+                    <div class="modern-form-group">
+                        <label class="modern-label" for="date-from">
+                            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                                <path fill="currentColor" d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z"/>
+                            </svg>
+                            Von
+                        </label>
+                        <div class="date-input-wrapper">
+                            <input type="date" id="date-from" name="date_from" class="modern-date-input">
+                        </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label class="form-label" for="date-to">Bis:</label>
-                        <input type="date" id="date-to" name="date_to" class="form-input">
+                    <!-- Zeitraum Bis -->
+                    <div class="modern-form-group">
+                        <label class="modern-label" for="date-to">
+                            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                                <path fill="currentColor" d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z"/>
+                            </svg>
+                            Bis
+                        </label>
+                        <div class="date-input-wrapper">
+                            <input type="date" id="date-to" name="date_to" class="modern-date-input">
+                        </div>
                     </div>
                 </div>
                 
-                <button class="btn btn-primary" onclick="filterData()" style="margin-top: 20px;">Daten laden</button>
-                <button class="btn btn-download" onclick="downloadCSV()" style="margin-top: 10px;">
-                    <svg class="icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
-                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
-                    </svg>
-                    CSV Download
-                </button>
+                <!-- Schnellauswahl für Zeitraum -->
+                <div class="quick-date-buttons">
+                    <button type="button" class="quick-btn" onclick="setDateRange('today')">Heute</button>
+                    <button type="button" class="quick-btn" onclick="setDateRange('week')">Diese Woche</button>
+                    <button type="button" class="quick-btn" onclick="setDateRange('month')">Dieser Monat</button>
+                    <button type="button" class="quick-btn" onclick="setDateRange('lastMonth')">Letzter Monat</button>
+                    <button type="button" class="quick-btn" onclick="setDateRange('year')">Dieses Jahr</button>
+                </div>
+                
+                <div class="filter-actions">
+                    <button class="btn btn-primary btn-large" onclick="filterData()">
+                        <svg viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                            <path fill="currentColor" d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
+                        </svg>
+                        Daten laden
+                    </button>
+                    <button class="btn btn-download btn-large" onclick="downloadCSV()">
+                        <svg viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                            <path fill="currentColor" d="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z"/>
+                        </svg>
+                        CSV Export
+                    </button>
+                </div>
                 
                 <!-- Datenübersicht direkt im Filter-Bereich -->
                 <div style="margin-top: 32px;">
@@ -113,19 +173,27 @@
                             {{ 'Verbunden' if db_status else 'Getrennt' }}
                         </span>
                     </div>
+                    <div style="overflow-x: auto;">
                     <table class="data-table" id="data-table">
                         <thead>
                             <tr>
                                 <th>Datum</th>
-                                <th>Mitarbeiter</th>
-                                <th>Stunden</th>
-                                <th>Projekt</th>
+                                <th>Vorname</th>
+                                <th>Nachname</th>
+                                <th>Zeit Beginn</th>
+                                <th>Zeit Ende</th>
+                                <th>Pause</th>
+                                <th>Summe mit Pause</th>
+                                <th>Summe ohne Pause</th>
+                                <th>Projekt / Gruppenname</th>
+                                <th>Kommentar</th>
                             </tr>
                         </thead>
                         <tbody id="data-table-body">
                             <!-- Daten werden dynamisch per JavaScript geladen -->
                         </tbody>
                     </table>
+                    </div>
                 </div>
             </div>
 
@@ -134,13 +202,23 @@
                 <h2 class="card-title">Kontakt & Versand</h2>
                 <div class="email-form">
                     <div class="form-group">
-                        <label class="form-label">Beschreibung</label>
-                        <p style="font-size: 14px; color: #6b7280;">Hier die API Bridge-Daten von Mc-Time als CSV-Datei senden.</p>
+                        <label class="form-label" for="email-to">E-Mail-Adresse:</label>
+                        <input type="email" id="email-to" name="email_to" class="form-input" placeholder="empfaenger@email.de">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="email-subject">Betreff:</label>
+                        <input type="text" id="email-subject" name="email_subject" class="form-input" placeholder="Zeiterfassung Export">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="email-message">Nachricht:</label>
+                        <textarea id="email-message" name="email_message" class="form-input" rows="4" placeholder="Ihre Nachricht hier..."></textarea>
                     </div>
                     
                     <div class="checkbox-group">
                         <input type="checkbox" id="attach-csv" class="checkbox" checked>
-                        <label for="attach-csv" style="font-size: 14px;">CSV automatisch anhängen</label>
+                        <label for="attach-csv" style="font-size: 14px;">CSV anhängen</label>
                     </div>
                     
                     <button class="btn btn-primary" onclick="sendEmail()">Senden</button>
@@ -158,8 +236,63 @@
         // Lädt Daten beim Seitenaufruf
         document.addEventListener('DOMContentLoaded', function() {
             resetProgressbar();
-            // filterData(); // Automatisches Laden entfernt, nur auf Button-Klick
+            // Setze Standard-Datum auf diesen Monat
+            setDateRange('month');
         });
+        
+        // Schnellauswahl für Zeitraum
+        function setDateRange(range) {
+            const today = new Date();
+            let fromDate, toDate;
+            
+            // Alle Quick-Buttons zurücksetzen
+            document.querySelectorAll('.quick-btn').forEach(btn => btn.classList.remove('active'));
+            
+            switch(range) {
+                case 'today':
+                    fromDate = today;
+                    toDate = today;
+                    break;
+                case 'week':
+                    // Diese Woche (Montag bis Sonntag)
+                    const dayOfWeek = today.getDay();
+                    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+                    fromDate = new Date(today);
+                    fromDate.setDate(today.getDate() + diffToMonday);
+                    toDate = new Date(fromDate);
+                    toDate.setDate(fromDate.getDate() + 6);
+                    break;
+                case 'month':
+                    // Dieser Monat
+                    fromDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                    toDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                    break;
+                case 'lastMonth':
+                    // Letzter Monat
+                    fromDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                    toDate = new Date(today.getFullYear(), today.getMonth(), 0);
+                    break;
+                case 'year':
+                    // Dieses Jahr
+                    fromDate = new Date(today.getFullYear(), 0, 1);
+                    toDate = new Date(today.getFullYear(), 11, 31);
+                    break;
+            }
+            
+            // Datum formatieren (YYYY-MM-DD)
+            const formatDate = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+            
+            document.getElementById('date-from').value = formatDate(fromDate);
+            document.getElementById('date-to').value = formatDate(toDate);
+            
+            // Aktiviere den geklickten Button
+            event.target.classList.add('active');
+        }
         
         // Progressbar-Animationsfunktionen
         function startLoadingAnimation() {
@@ -250,7 +383,7 @@
                 return `${day}.${month}.${year}`;
             };
             
-            // Prepare data for backend API
+            // Prepare data for middleware API
             const formData = {
                 firma: company,
                 mitarbeiter: employee,
@@ -258,10 +391,10 @@
                 bis: formatDateForAPI(dateTo)
             };
             
-            console.log('=== SENDING TO API ===');
+            console.log('=== SENDING TO MIDDLEWARE ===');
             console.log('Form Data:', formData);
             
-            // Call backend API
+            // Call middleware API
             fetch('/api/load-data', {
                 method: 'POST',
                 headers: {
@@ -307,7 +440,7 @@
             console.log('Time entries received:', data);
             
             if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #6b7280;">Keine Daten verfügbar</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #6b7280;">Keine Daten verfügbar</td></tr>';
                 return;
             }
             
@@ -317,17 +450,33 @@
             data.forEach((entry, index) => {
                 const tr = document.createElement('tr');
                 
-                // Use enhanced data from backend
-                const date = entry.date_formatted || 'Unknown Date';
-                const name = entry.name || 'Unknown';
-                const project = entry.project || entry.organizationName || 'Unknown Project';
-                const workHours = entry.actual_work_hours !== undefined ? entry.actual_work_hours.toFixed(2) + 'h' : '0.00h';
+                // Name aufteilen in Vor- und Nachname
+                const fullName = entry.name || '';
+                const nameParts = fullName.split(' ');
+                const firstName = nameParts[0] || '';
+                const lastName = nameParts.slice(1).join(' ') || '';
+                
+                // Daten aus der API
+                const date = entry.date_formatted || '';
+                const timeStart = entry.time_start || '';
+                const timeEnd = entry.time_end || '';
+                const breaks = entry.breaks_formatted || '';
+                const totalHours = entry.total_hours_formatted || '';
+                const actualHours = entry.actual_hours_formatted || '';
+                const project = entry.project || entry.organizationName || '';
+                const comment = entry.comment || '';
                 
                 tr.innerHTML = `
                     <td>${date}</td>
-                    <td>${name}</td>
-                    <td>${workHours}</td>
+                    <td>${firstName}</td>
+                    <td>${lastName}</td>
+                    <td>${timeStart}</td>
+                    <td>${timeEnd}</td>
+                    <td>${breaks}</td>
+                    <td>${totalHours}</td>
+                    <td>${actualHours}</td>
                     <td>${project}</td>
+                    <td>${comment}</td>
                 `;
                 
                 // Sanfte Animation für jede Zeile
@@ -369,8 +518,19 @@
             const dateTo = document.getElementById('date-to').value;
             const employeeName = document.getElementById('employee-select').selectedOptions[0]?.text || '';
             
+            // Neue Felder
+            const emailTo = document.getElementById('email-to').value;
+            const emailSubject = document.getElementById('email-subject').value;
+            const emailMessage = document.getElementById('email-message').value;
+            const attachCsv = document.getElementById('attach-csv').checked;
+            
             if (!employee || !dateFrom || !dateTo) {
                 alert('Bitte wählen Sie zuerst Mitarbeiter und Zeitraum aus.');
+                return;
+            }
+            
+            if (!emailTo) {
+                alert('Bitte geben Sie eine E-Mail-Adresse ein.');
                 return;
             }
             
@@ -382,30 +542,39 @@
             };
             
             // Show loading state
-            const originalText = event?.target?.textContent || 'E-Mail senden';
-            if (event?.target) {
-                event.target.disabled = true;
-                event.target.textContent = 'Sende...';
+            const btn = event?.target;
+            const originalText = btn?.textContent || 'Senden';
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Sende...';
             }
             
-            // Send email via API
-            const formData = new URLSearchParams();
-            formData.append('employee_id', employee);
-            formData.append('employee_name', employeeName);
-            formData.append('date_from', formatDateForAPI(dateFrom));
-            formData.append('date_to', formatDateForAPI(dateTo));
+            // Send email via API with new fields
+            const payload = {
+                employee_id: employee,
+                employee_name: employeeName,
+                date_from: formatDateForAPI(dateFrom),
+                date_to: formatDateForAPI(dateTo),
+                email_to: emailTo,
+                email_subject: emailSubject || `Zeiterfassung ${employeeName} - ${formatDateForAPI(dateFrom)} bis ${formatDateForAPI(dateTo)}`,
+                message: emailMessage,
+                attach_csv: attachCsv
+            };
             
-            fetch('/api/send-email', {
+            fetch('/api/send-custom-email', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
+                    'Content-Type': 'application/json'
                 },
-                body: formData
+                body: JSON.stringify(payload)
             })
                 .then(response => response.json())
                 .then(result => {
                     if (result.status === 'success') {
-                        alert(`E-Mail erfolgreich an ${result.email} gesendet!`);
+                        document.getElementById('success-message').style.display = 'block';
+                        setTimeout(() => {
+                            document.getElementById('success-message').style.display = 'none';
+                        }, 3000);
                     } else {
                         alert('Fehler beim Senden der E-Mail: ' + result.message);
                     }
@@ -415,9 +584,9 @@
                     alert('Fehler beim Senden der E-Mail!');
                 })
                 .finally(() => {
-                    if (event?.target) {
-                        event.target.disabled = false;
-                        event.target.textContent = originalText;
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = originalText;
                     }
                 });
         }

@@ -3,14 +3,9 @@ import os
 import io
 import csv
 import sys
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'backend'))
-
-from api_connector import middleware_connector
-from api_handler import BackendService
+# Füge Projekt-Root zum Pfad hinzu
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 # Load environment variables from .env file if it exists
 try:
@@ -20,33 +15,64 @@ except ImportError:
     print("python-dotenv not installed. Install with: pip install python-dotenv")
     print("Using environment variables directly.")
 
+# Importiere Backend und Middleware
+from middleware.core import Middleware, get_middleware
+from backend.api_handler import BackendService
+
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
-# Initialize backend service for McTime API
-# SECURITY: Load API key from environment variable, never hardcode it!
+# ==================== HYBRID ARCHITEKTUR ====================
+# Frontend → Middleware → Backend → McTime API
+# Middleware: Authentifizierung, Rate Limiting, Fehlerbehandlung
+# Backend: McTime API-Logik, Datenverarbeitung
+
 API_KEY = os.getenv('MCTIME_API_KEY')
 if not API_KEY:
     print("WARNING: MCTIME_API_KEY environment variable not set!")
     print("Please configure your .env file with MCTIME_API_KEY")
-    
-backend_service = BackendService(API_KEY) if API_KEY else None
+
+# Initialisiere Backend Service
+try:
+    backend_service = BackendService(API_KEY) if API_KEY else None
+    if backend_service:
+        print("✅ Backend Service initialisiert")
+except Exception as e:
+    print(f"❌ Backend-Fehler: {e}")
+    backend_service = None
+
+# Initialisiere Middleware (für zusätzliche Features)
+try:
+    middleware = get_middleware(API_KEY) if API_KEY else None
+    if middleware:
+        print("✅ Middleware initialisiert")
+except Exception as e:
+    print(f"❌ Middleware-Fehler: {e}")
+    middleware = None
 
 @app.route('/')
 def home():
-    # Get data from McTime API via backend service
+    """Hauptseite - Backend mit Middleware Fallback"""
     try:
-        if not backend_service:
-            raise Exception("Backend service not initialized - check MCTIME_API_KEY")
-            
-        form_data = backend_service.get_form_data()
-        companies = form_data.get('organizations', [])
-        employees = form_data.get('employees', [])
-        connection_status = True if form_data.get('status') == 'success' else False
+        # Primär: Backend Service verwenden
+        if backend_service:
+            form_data = backend_service.get_form_data()
+            companies = form_data.get('organizations', [])
+            employees = form_data.get('employees', [])
+            connection_status = form_data.get('status') == 'success'
+        # Fallback: Middleware
+        elif middleware:
+            form_data = middleware.get_form_data()
+            companies = form_data.get('organizations', [])
+            employees = form_data.get('employees', [])
+            connection_status = form_data.get('status') == 'success'
+        else:
+            raise Exception("Weder Backend noch Middleware initialisiert")
+        
     except Exception as e:
-        # Fallback to middleware connector if backend service fails
-        companies = [{'name': comp, 'id': comp} for comp in middleware_connector.get_companies()]
-        employees = middleware_connector.get_employees()
-        connection_status = middleware_connector.get_connection_status()['connected']
+        print(f"Fehler beim Laden der Daten: {e}")
+        companies = []
+        employees = []
+        connection_status = False
     
     return render_template('index.html', 
                          companies=companies, 
@@ -62,21 +88,42 @@ def api_config():
 def page_1():
     return render_template('321.html')
 
-@app.route('/api/middleware/status')
-def middleware_status():
-    """Gibt den Status der Middleware-Verbindung zurück"""
-    return jsonify(middleware_connector.get_connection_status())
+@app.route('/api/status')
+def system_status():
+    """Gibt den Status von Backend und Middleware zurück"""
+    status = {
+        "backend": {
+            "available": backend_service is not None,
+            "api_configured": bool(API_KEY)
+        },
+        "middleware": {
+            "available": middleware is not None,
+            "status": middleware.get_connection_status() if middleware else None
+        }
+    }
+    return jsonify(status)
 
 @app.route('/api/middleware/ping')
 def ping_middleware():
-    """Testet die Verbindung zur Middleware"""
-    result = middleware_connector.ping_middleware()
-    return jsonify(result)
+    """Testet die Verbindung zur Middleware/McTime API"""
+    if not middleware:
+        return jsonify({
+            "status": "error",
+            "message": "Middleware nicht initialisiert"
+        })
+    return jsonify(middleware.health_check())
+
+@app.route('/api/middleware/stats')
+def middleware_stats():
+    """Gibt Middleware-Statistiken zurück"""
+    if not middleware:
+        return jsonify({"error": "Middleware nicht initialisiert"})
+    return jsonify(middleware.request_handler.get_stats())
 
 @app.route('/api/load-data', methods=['POST'])
 def load_data():
     """
-    New endpoint for McTime API data loading
+    Endpoint für McTime API Daten-Laden - BACKEND PRIMÄR
     Expected JSON payload:
     {
         "firma": "organization_id",
@@ -87,7 +134,7 @@ def load_data():
     """
     try:
         form_data = request.get_json()
-        print("=== BACKEND API CALL ===")
+        print("=== HYBRID API CALL ===")
         print(f"Received form_data: {form_data}")
         
         if not form_data:
@@ -97,12 +144,24 @@ def load_data():
                 "message": "No JSON data provided"
             }), 400
         
-        print("Processing form request...")
-        result = backend_service.process_form_request(form_data)
-        print(f"Backend result: {result}")
+        # Primär: Backend Service verwenden
+        if backend_service:
+            print("Using Backend Service...")
+            result = backend_service.process_form_request(form_data)
+        # Fallback: Middleware
+        elif middleware:
+            print("Fallback: Using Middleware...")
+            result = middleware.process_form_request(form_data)
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "Weder Backend noch Middleware verfügbar"
+            }), 500
+        
+        print(f"Result: {result}")
         
         if result.get("status") == "error":
-            print(f"Backend returned error: {result.get('message')}")
+            print(f"Service returned error: {result.get('message')}")
             return jsonify(result), 400
         
         print(f"Success! Returning {len(result.get('data', {}).get('timeEntries', []))} time entries")
@@ -116,86 +175,128 @@ def load_data():
 
 @app.route('/api/data')
 def get_data():
-    """Holt gefilterte Daten von der Middleware (legacy endpoint)"""
+    """Holt gefilterte Daten - Backend primär, Middleware Fallback"""
     company = request.args.get('company')
     employee = request.args.get('employee')
     date_from = request.args.get('date_from')
     date_to = request.args.get('date_to')
     
-    data = middleware_connector.get_time_data(
-        company=company,
-        employee=employee,
-        date_from=date_from,
-        date_to=date_to
-    )
-    return jsonify(data)
+    if not all([employee, date_from, date_to]):
+        return jsonify({"error": "Fehlende Parameter: employee, date_from, date_to"}), 400
+    
+    try:
+        # Primär: Backend verwenden
+        if backend_service:
+            # Konvertiere Format für Backend
+            date_from = backend_service._convert_date_format(date_from) if '.' in date_from else date_from
+            date_to = backend_service._convert_date_format(date_to) if '.' in date_to else date_to
+            
+            data = backend_service.mctime_api.get_time_entries(
+                employee_id=employee,
+                date_from=date_from,
+                date_to=date_to,
+                organization_id=company
+            )
+        # Fallback: Middleware
+        elif middleware:
+            data = middleware.get_time_entries(
+                employee_id=employee,
+                date_from=date_from,
+                date_to=date_to,
+                organization_id=company
+            )
+        else:
+            return jsonify({"error": "Kein Service verfügbar"}), 500
+        
+        return jsonify(data)
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/send-email', methods=['POST'])
 def send_email():
-    """Send time tracking data via email to employee"""
+    """Send time tracking data via email - HYBRID APPROACH"""
     try:
-        # Get form data
-        employee_id = request.form.get('employee_id')
-        employee_name = request.form.get('employee_name')
-        date_from = request.form.get('date_from')
-        date_to = request.form.get('date_to')
+        # Get form data (JSON oder Form)
+        if request.is_json:
+            data = request.get_json()
+        else:
+            data = request.form.to_dict()
+        
+        employee_id = data.get('employee_id')
+        employee_name = data.get('employee_name')
+        date_from = data.get('date_from')
+        date_to = data.get('date_to')
         
         if not all([employee_id, date_from, date_to]):
             return jsonify({
                 'status': 'error',
                 'message': 'Fehlende Parameter: employee_id, date_from, date_to erforderlich'
             })
-
-        # Convert date format from dd.mm.yyyy to yyyy-mm-dd if needed
-        try:
+        
+        # Erweiterte Middleware-Features verfügbar?
+        if middleware and hasattr(middleware, 'send_time_report_email'):
+            # Neue optionale Parameter
+            custom_email = data.get('email_to')
+            custom_subject = data.get('email_subject')
+            attach_csv = data.get('attach_csv', 'true').lower() == 'true'
+            
+            # Konvertiere Datum
+            date_from = middleware._normalize_date(date_from)
+            date_to = middleware._normalize_date(date_to)
+            
+            # Nutze erweiterte Middleware-Features
+            result = middleware.send_time_report_email(
+                employee_id=employee_id,
+                employee_name=employee_name or "Mitarbeiter",
+                date_from=date_from,
+                date_to=date_to,
+                custom_email=custom_email,
+                custom_subject=custom_subject,
+                attach_csv=attach_csv
+            )
+        
+        elif backend_service:
+            # Basic E-Mail über Backend (legacy)
+            # Konvertiere Datum für Backend
             if '.' in date_from:
                 date_from = backend_service._convert_date_format(date_from)
             if '.' in date_to:
                 date_to = backend_service._convert_date_format(date_to)
-        except Exception as e:
-            print(f"Date conversion error: {e}")
-        
-        # Get employee email
-        employee_email = backend_service.mctime_api.get_user_email_by_id(employee_id)
-        if not employee_email:
-            return jsonify({
-                'status': 'error',
-                'message': f'Keine E-Mail-Adresse für Mitarbeiter {employee_name} gefunden'
-            })
-        
-        # Get time entries data
-        time_entries = backend_service.mctime_api.get_time_entries(
-            employee_id, 
-            date_from, 
-            date_to
-        )
-        
-        if not time_entries:
-            return jsonify({
-                'status': 'error',
-                'message': 'Keine Zeiteinträge für den angegebenen Zeitraum gefunden'
-            })
-        
-        # Send email
-        success = send_time_report_email(
-            employee_email, 
-            employee_name, 
-            time_entries, 
-            date_from, 
-            date_to
-        )
-        
-        if success:
-            return jsonify({
+            
+            # Hole E-Mail und Zeitdaten über Backend
+            employee_email = backend_service.mctime_api.get_user_email_by_id(employee_id)
+            if not employee_email:
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Keine E-Mail-Adresse für {employee_name} gefunden'
+                })
+            
+            time_entries = backend_service.mctime_api.get_time_entries(
+                employee_id, date_from, date_to
+            )
+            
+            if not time_entries:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Keine Zeiteinträge gefunden'
+                })
+            
+            # Basic E-Mail-Versand (ohne erweiterte Features)
+            result = {
                 'status': 'success',
-                'message': 'E-Mail erfolgreich gesendet',
-                'email': employee_email
-            })
+                'message': 'Daten verfügbar - erweiterte E-Mail-Features benötigen Middleware',
+                'email': employee_email,
+                'entries_count': len(time_entries)
+            }
+        
         else:
             return jsonify({
                 'status': 'error',
-                'message': 'Fehler beim Senden der E-Mail'
-            })
+                'message': 'Weder Backend noch Middleware verfügbar'
+            }), 500
+        
+        return jsonify(result)
             
     except Exception as e:
         print(f"Error in send_email: {e}")
@@ -204,185 +305,222 @@ def send_email():
             'message': f'Server-Fehler: {str(e)}'
         })
 
-def send_time_report_email(email, employee_name, time_entries, date_from, date_to):
-    """Send time tracking report via email using SMTP"""
-    from datetime import datetime
+
+# ==================== ZUSÄTZLICHE MIDDLEWARE-ENDPOINTS ====================
+
+@app.route('/api/employees')
+def get_employees():
+    """Holt Mitarbeiterliste über Middleware"""
+    if not middleware:
+        return jsonify({"error": "Middleware nicht initialisiert"}), 500
+    
+    org_id = request.args.get('organization_id')
+    employees = middleware.get_employees(org_id)
+    return jsonify(employees)
+
+
+@app.route('/api/organizations')
+def get_organizations():
+    """Holt Organisationsliste über Middleware"""
+    if not middleware:
+        return jsonify({"error": "Middleware nicht initialisiert"}), 500
+    
+    organizations = middleware.get_organizations()
+    return jsonify(organizations)
+
+
+@app.route('/api/send-custom-email', methods=['POST'])
+def send_custom_email():
+    """
+    Erweiterte E-Mail-Funktion mit benutzerdefinierten Optionen
+    
+    JSON Payload:
+    {
+        "employee_id": "uuid",
+        "employee_name": "Name",
+        "date_from": "dd.mm.yyyy",
+        "date_to": "dd.mm.yyyy", 
+        "email_to": "custom@email.com",       # Optional: benutzerdefinierte E-Mail
+        "email_subject": "Custom Subject",     # Optional: benutzerdefinierter Betreff
+        "attach_csv": true,                    # Optional: CSV anhängen (default: true)
+        "message": "Zusätzliche Nachricht"    # Optional: persönliche Nachricht
+    }
+    """
+    try:
+        if not middleware:
+            return jsonify({
+                'status': 'error',
+                'message': 'Middleware nicht initialisiert'
+            }), 500
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'status': 'error', 
+                'message': 'JSON-Daten erforderlich'
+            }), 400
+        
+        # Pflichtfelder
+        employee_id = data.get('employee_id')
+        date_from = data.get('date_from')  
+        date_to = data.get('date_to')
+        
+        if not all([employee_id, date_from, date_to]):
+            return jsonify({
+                'status': 'error',
+                'message': 'Pflichtfelder: employee_id, date_from, date_to'
+            }), 400
+        
+        # Optionale Felder
+        employee_name = data.get('employee_name', 'Mitarbeiter')
+        custom_email = data.get('email_to')
+        custom_subject = data.get('email_subject')
+        attach_csv = data.get('attach_csv', True)
+        custom_message = data.get('message', '')
+        
+        # Wenn kein custom_subject, aber custom_message vorhanden
+        if custom_message and not custom_subject:
+            custom_subject = f"Zeiterfassung - {custom_message}"
+        
+        # Normalisiere Datums-Format
+        date_from = middleware._normalize_date(date_from)
+        date_to = middleware._normalize_date(date_to)
+        
+        print(f"=== CUSTOM EMAIL REQUEST ===")
+        print(f"Employee: {employee_name} ({employee_id})")
+        print(f"Period: {date_from} - {date_to}")
+        print(f"Custom Email: {custom_email}")
+        print(f"Custom Subject: {custom_subject}")
+        print(f"Attach CSV: {attach_csv}")
+        print(f"Custom Message: {custom_message}")
+        
+        # Sende über Middleware
+        result = middleware.send_time_report_email(
+            employee_id=employee_id,
+            employee_name=employee_name,
+            date_from=date_from,
+            date_to=date_to,
+            custom_email=custom_email,
+            custom_subject=custom_subject,
+            attach_csv=attach_csv,
+            custom_message=custom_message
+        )
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"Error in send_custom_email: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Server-Fehler: {str(e)}'
+        }), 500
+
+
+@app.route('/api/test-csv/<employee_id>')
+def test_csv_structure(employee_id):
+    """Test-Route für CSV-Struktur Validierung"""
+    if not middleware:
+        return jsonify({"error": "Middleware nicht initialisiert"}), 500
+    
+    # Test-Daten holen
+    date_from = "01.10.2025"
+    date_to = "31.10.2025"
     
     try:
-        # Create email content
-        subject = f"Zeiterfassung für {employee_name} ({date_from} bis {date_to})"
+        data = middleware.get_time_entries(
+            employee_id=employee_id,
+            date_from=middleware._normalize_date(date_from),
+            date_to=middleware._normalize_date(date_to)
+        )
         
-        # Calculate totals
-        total_work_hours = sum(entry.get('actual_work_hours', 0) for entry in time_entries)
-        total_entries = len(time_entries)
+        # CSV-Content erstellen
+        csv_content = middleware.mail._create_csv_content(data, "Test Benutzer")
         
-        # Create HTML email body
-        html_body = f"""
-        <html>
-        <body>
-            <h2>Zeiterfassung - {employee_name}</h2>
-            <p><strong>Zeitraum:</strong> {date_from} bis {date_to}</p>
-            <p><strong>Gesamtanzahl Einträge:</strong> {total_entries}</p>
-            <p><strong>Gesamte Arbeitsstunden:</strong> {total_work_hours:.2f}h</p>
-            
-            <h3>Detaillierte Aufstellung:</h3>
-            <table border="1" style="border-collapse: collapse; width: 100%;">
-                <tr>
-                    <th>Datum</th>
-                    <th>Projekt</th>
-                    <th>Arbeitszeit</th>
-                    <th>Pausen</th>
-                    <th>Effektive Stunden</th>
-                </tr>
-        """
-        
-        for entry in time_entries:
-            html_body += f"""
-                <tr>
-                    <td>{entry.get('date_formatted', 'N/A')}</td>
-                    <td>{entry.get('project', 'N/A')}</td>
-                    <td>{entry.get('time_formatted', 'N/A')}</td>
-                    <td>{entry.get('breaks_formatted', 'N/A')}</td>
-                    <td>{entry.get('actual_work_hours', 0):.2f}h</td>
-                </tr>
-            """
-        
-        html_body += """
-            </table>
-            <br>
-            <p>Diese E-Mail wurde automatisch vom McTime System generiert.</p>
-        </body>
-        </html>
-        """
-        
-        # Send email via SMTP with TLS (as specified)
-        print("Sending email via SMTP with TLS...")
-        success = send_real_email_smtp(email, subject, html_body)
-        
-        return success
+        return Response(
+            csv_content,
+            mimetype='text/csv',
+            headers={"Content-disposition": "attachment; filename=test_struktur.csv"}
+        )
         
     except Exception as e:
-        print(f"Error sending email: {e}")
-        return False
-
-def send_real_email_smtp(to_email, subject, body_html):
-    """Send email using SMTP with TLS (exact user specifications)"""
-    try:
-        # SECURITY: All credentials MUST come from environment variables
-        smtp_server = os.getenv('SMTP_SERVER')
-        smtp_port = int(os.getenv('SMTP_PORT', 587))
-        smtp_username = os.getenv('SMTP_USERNAME')
-        smtp_password = os.getenv('SMTP_PASSWORD')
-        from_email = os.getenv('SENDER_EMAIL')
-        use_tls = os.getenv('USE_TLS', 'true').lower() == 'true'
-        
-        # Validate required credentials
-        if not all([smtp_server, smtp_username, smtp_password, from_email]):
-            print("ERROR: Missing required SMTP environment variables!")
-            print("Please configure: SMTP_SERVER, SMTP_USERNAME, SMTP_PASSWORD, SENDER_EMAIL")
-            return False
-        
-        print("=== SENDING REAL EMAIL ===")
-        print(f"SMTP Server: {smtp_server}:{smtp_port}")
-        print(f"From: {from_email}")
-        print(f"To: {to_email}")
-        print(f"Subject: {subject}")
-        print(f"Username: {smtp_username}")
-        print(f"Password: {'***'}")
-        
-        # Create message
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = subject
-        msg['From'] = from_email
-        msg['To'] = to_email
-        
-        # Add HTML body
-        html_part = MIMEText(body_html, 'html', 'utf-8')
-        msg.attach(html_part)
-        
-        print(f"TLS: {use_tls}")
-        
-        print("Connecting to SMTP server with TLS...")
-        
-        # Use TLS connection (as specified)
-        server = smtplib.SMTP(smtp_server, smtp_port)
-        if use_tls:
-            print("Enabling TLS encryption...")
-            server.starttls()
-        
-        print("Connected. Attempting login...")
-        server.login(smtp_username, smtp_password)
-        
-        print("Logged in. Sending email...")
-        server.send_message(msg)
-        server.quit()
-        
-        print("✅ Email sent successfully!")
-        return True
-        
-    except smtplib.SMTPAuthenticationError as e:
-        print(f"SMTP Authentication Error: {e}")
-        print("Tip: AWS SES may require proper SES SMTP credentials, not API credentials")
-        return False
-    except smtplib.SMTPException as e:
-        print(f"SMTP Error: {e}")
-        return False
-    except Exception as e:
-        print(f"Email sending error: {e}")
-        return False
-
-
-
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/download_csv')
 def download_csv():
+    """CSV-Download - Daten über Middleware"""
+    if not middleware:
+        return jsonify({"error": "Middleware nicht initialisiert"}), 500
+    
     # Filter aus Request-Parametern holen
     company = request.args.get('company')
     employee = request.args.get('employee')
     date_from = request.args.get('date_from')
     date_to = request.args.get('date_to')
     
-    # Daten von Middleware Connector holen
-    data = middleware_connector.get_time_data(
-        company=company,
-        employee=employee,
+    if not all([employee, date_from, date_to]):
+        return jsonify({"error": "Fehlende Parameter"}), 400
+    
+    # Normalisiere Datum
+    date_from = middleware._normalize_date(date_from)
+    date_to = middleware._normalize_date(date_to)
+    
+    # Daten über Middleware holen
+    data = middleware.get_time_entries(
+        employee_id=employee,
         date_from=date_from,
-        date_to=date_to
+        date_to=date_to,
+        organization_id=company
     )
     
-    # CSV-Header erstellen
-    csv_data = [['Datum', 'Mitarbeiter', 'Stunden', 'Projekt', 'Firma', 'Beschreibung', 'Start', 'Ende']]
+    # CSV-Header erstellen - Original McTime Format
+    headers = [
+        'Personalnummer', 'Vorname', 'Nachname', 'Datum', 'Type',
+        'Zeit Beginn', 'Zeit Ende', 'Pause', 'Summe mit Pause', 
+        'Summe ohne Pause', 'Projektnummer', 'Auftragsnummer',
+        'Projekt / Gruppenname', 'Kommentar'
+    ]
+    csv_data = [headers]
     
-    # Daten hinzufügen
+    # Daten hinzufügen im korrekten Format
     for row in data:
+        # Name aufteilen
+        name_parts = (row.get('name', '') or '').split(' ', 1)
+        first_name = name_parts[0] if len(name_parts) > 0 else ''
+        last_name = name_parts[1] if len(name_parts) > 1 else ''
+        
         csv_data.append([
-            row.get('date', ''),
-            row.get('employee', ''),
-            row.get('hours', ''),
-            row.get('project', ''),
-            row.get('company', ''),
-            row.get('description', ''),
-            row.get('start_time', ''),
-            row.get('end_time', '')
+            row.get('employee_id', ''),             # Personalnummer (UUID)
+            first_name,                             # Vorname
+            last_name,                              # Nachname
+            row.get('date_formatted', ''),          # Datum (01.10.25)
+            'Arbeitszeit',                          # Type
+            row.get('time_start', ''),              # Zeit Beginn (05:00)
+            row.get('time_end', ''),                # Zeit Ende (18:00)
+            f'"{row.get("breaks_formatted", "")}"' if row.get('breaks_formatted') else '', # Pause in Anführungszeichen
+            row.get('total_hours_formatted', ''),   # Summe mit Pause (13:00)
+            row.get('actual_hours_formatted', ''),  # Summe ohne Pause (12:00)
+            '',                                     # Projektnummer
+            '',                                     # Auftragsnummer
+            row.get('project', ''),                 # Projekt / Gruppenname
+            ''                                      # Kommentar
         ])
     
-    # CSV in Memory erstellen
+    # CSV in Memory erstellen mit Semicolon-Delimiter (wie im Original)
     output = io.StringIO()
-    writer = csv.writer(output)
+    writer = csv.writer(output, delimiter=';')
     writer.writerows(csv_data)
     
     # Response erstellen
     response = Response(
         output.getvalue(),
         mimetype='text/csv',
-        headers={"Content-disposition": "attachment; filename=daten_export.csv"}
+        headers={"Content-disposition": "attachment; filename=zeitdaten_export.csv"}
     )
     
     return response
 
+
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(debug=True, port=port)
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=True, port=port)

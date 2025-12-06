@@ -120,9 +120,8 @@ class McTimeAPI:
                     break_duration = break_end - break_start
                     total_break_time += break_duration
                     
-                    # Format break for display: "13:00-14:00 (1.0h)"
-                    break_hours = break_duration.total_seconds() / 3600
-                    break_str = f"{break_start.strftime('%H:%M')}-{break_end.strftime('%H:%M')} ({break_hours:.1f}h)"
+                    # Format break for CSV: "09:00-09:30" (wie im Original CSV)
+                    break_str = f"{break_start.strftime('%H:%M')}-{break_end.strftime('%H:%M')}"
                     break_list.append(break_str)
                 except Exception as e:
                     print(f"Error processing break: {e}")
@@ -136,11 +135,26 @@ class McTimeAPI:
             time_record['total_hours'] = round(total_hours, 2)
             time_record['break_hours'] = round(break_hours, 2)
             time_record['actual_work_hours'] = round(actual_work_hours, 2)
-            time_record['breaks_formatted'] = ', '.join(break_list) if break_list else 'Keine Pausen'
             
-            # Format date for display
-            time_record['date_formatted'] = start_time.strftime('%d.%m.%Y')
+            # Pausenformat für CSV: "09:00-09:30;16:00-16:30"
+            time_record['breaks_formatted'] = ';'.join(break_list) if break_list else ''
+            
+            # Datumsformat: "01.10.25" (wie im Original CSV)
+            time_record['date_formatted'] = start_time.strftime('%d.%m.%y')
             time_record['time_formatted'] = f"{start_time.strftime('%H:%M')}-{end_time.strftime('%H:%M')}"
+            
+            # Zeitfelder für CSV
+            time_record['time_start'] = start_time.strftime('%H:%M')
+            time_record['time_end'] = end_time.strftime('%H:%M')
+            
+            # Summen im Format "13:00" (wie im Original CSV)
+            total_hours_int = int(total_hours)
+            total_minutes = int((total_hours - total_hours_int) * 60)
+            time_record['total_hours_formatted'] = f"{total_hours_int:02d}:{total_minutes:02d}"
+            
+            actual_hours_int = int(actual_work_hours)
+            actual_minutes = int((actual_work_hours - actual_hours_int) * 60)
+            time_record['actual_hours_formatted'] = f"{actual_hours_int:02d}:{actual_minutes:02d}"
             
             return time_record
             
@@ -151,9 +165,13 @@ class McTimeAPI:
             time_record['total_hours'] = 0.0
             time_record['break_hours'] = 0.0
             time_record['actual_work_hours'] = 0.0
-            time_record['breaks_formatted'] = 'Fehler beim Berechnen'
+            time_record['breaks_formatted'] = ''
             time_record['date_formatted'] = 'Unknown Date'
             time_record['time_formatted'] = 'Unknown Time'
+            time_record['time_start'] = '00:00'
+            time_record['time_end'] = '00:00'
+            time_record['total_hours_formatted'] = '00:00'
+            time_record['actual_hours_formatted'] = '00:00'
             return time_record
     
     def get_time_entries(self, employee_id: str, date_from: str, date_to: str, organization_id: Optional[str] = None) -> List[Dict]:
