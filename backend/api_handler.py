@@ -14,15 +14,21 @@ class McTimeAPI:
     def get_organizations(self) -> List[Dict]:
         """
         Get list of organizations (companies/firms)
+        Filtert nur DiploTGM (Infocom GmbH entfernt wegen fehlender Berechtigungen)
         """
         url = f"{self.base_url}/organizations"
         try:
             response = requests.get(url, headers=self.headers)
             if response.status_code == 200:
                 data = response.json()
-                # Adjust based on actual API response structure
                 organizations = data.get("items", [{}])[0].get("data", {}).get("organizations", [])
-                return [{"id": org.get("id"), "name": org.get("organizationName")} for org in organizations]
+                # Nur DiploTGM zurückgeben (Infocom GmbH ausschließen)
+                filtered_orgs = [
+                    {"id": org.get("id"), "name": org.get("organizationName")}
+                    for org in organizations
+                    if org.get("organizationName") != "Infocom GmbH"
+                ]
+                return filtered_orgs
             else:
                 print(f"Error fetching organizations: {response.status_code}")
                 return []
@@ -30,20 +36,22 @@ class McTimeAPI:
             print(f"Exception in get_organizations: {e}")
             return []
     
-    def get_employees(self, organization_id: Optional[str] = None) -> List[Dict]:
+    def get_employees(self, organization_id: Optional[str] = None, organization_name: Optional[str] = None) -> List[Dict]:
         """
         Get list of employees/users
+        Hinweis: Organisations-Filter deaktiviert (API-Berechtigungen fehlen)
         """
         url = f"{self.base_url}/users"
         params = {"roles": "employee"}
-        if organization_id:
-            params["organizationId"] = organization_id
+        # Organisations-Filter deaktiviert - keine API-Berechtigung
             
         try:
             response = requests.get(url, headers=self.headers, params=params)
+            
             if response.status_code == 200:
                 data = response.json()
                 users = data.get("items", [{}])[0].get("data", {}).get("users", [])
+                
                 employees = []
                 for user in users:
                     full_name = f"{user.get('firstName', '')} {user.get('lastName', '')}".strip()

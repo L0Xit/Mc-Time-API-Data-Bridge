@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>API Konfiguration - McTime Data Bridge</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='mctime_icon.png') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -12,12 +15,9 @@
     <header class="header">
         <div class="header-content">
             <div class="logo-section">
-                <img src="{{ url_for('static', filename='mctime_logo.png') }}" alt="mc time" class="logo">
-                <span class="logo-text">mc time</span>
+                <img src="{{ url_for('static', filename='mctime_logo.png') }}" alt="McTime" class="logo">
             </div>
-            <div class="slogan">
-                Daten — Datentransparenz & Konsistenz, unser Ding
-            </div>
+            <div class="slogan">Einheitliche Daten. Einheitlicher Erfolg</div>
         </div>
     </header>
 
@@ -28,194 +28,421 @@
                 <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
             </svg>
         </div>
-        <div class="nav-icon" title="Charts">
+        <div class="nav-icon" title="Charts" onclick="window.location.href = '{{ url_for('charts') }}'">
             <svg class="icon" viewBox="0 0 24 24">
                 <path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L3.5 15.9z"/>
             </svg>
         </div>
-        <div class="nav-icon" title="Time">
+        <div class="nav-icon active" title="Einstellungen">
             <svg class="icon" viewBox="0 0 24 24">
-                <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z"/>
-            </svg>
-        </div>
-        <div class="nav-icon active" title="Profile">
-            <svg class="icon" viewBox="0 0 24 24">
-                <path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/>
+                <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
             </svg>
         </div>
     </nav>
 
     <!-- Main Content -->
     <main class="main-content">
-        <!-- Page Header with Progress -->
+        <!-- Page Header -->
         <div class="page-header">
-            <h1 class="page-title">API Konfiguration</h1>
+            <h1 class="page-title">System Status & Konfiguration</h1>
             <div class="progress-container">
-                <div class="progress-label">McTime Data API Bridge</div>
+                <div class="progress-label" id="progress-label">McTime API Data Bridge v2.0</div>
                 <div class="progress-bar">
-                    <div class="progress-fill"></div>
+                    <div class="progress-fill" id="progress-fill" style="width: 100%; background: linear-gradient(90deg, #10b981 0%, #34d399 100%);"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Cards Grid -->
-        <div class="content-grid">
-            <!-- Status Card -->
-            <div class="card">
-                <h2 class="card-title">Middleware Status</h2>
-                <div id="middleware-status-container">
-                    <div class="status-container">
-                        <span>Middleware Status:</span>
-                        <span class="status-indicator connected">Dummy-Modus aktiv</span>
+        <!-- Status Cards Grid -->
+        <div class="config-grid">
+            <!-- Backend Status -->
+            <div class="card status-card">
+                <div class="status-header">
+                    <svg viewBox="0 0 24 24" style="width: 32px; height: 32px; color: #10b981;">
+                        <path fill="currentColor" d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M11,16.5L6.5,12L7.91,10.59L11,13.67L16.59,8.09L18,9.5L11,16.5Z"/>
+                    </svg>
+                    <h2>Backend Service</h2>
+                </div>
+                <div class="status-body">
+                    <div class="status-item">
+                        <span class="status-label">Status:</span>
+                        <span class="status-badge success" id="backend-status">Aktiv</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">API-Key:</span>
+                        <span class="status-badge success" id="api-key-status">Konfiguriert</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Endpunkt:</span>
+                        <span class="status-value">mctime.com/api/v2</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Test Card -->
-            <div class="card">
-                <h2 class="card-title">Verbindungstest</h2>
-                <button onclick="testMiddlewareConnection()" class="btn btn-primary">
-                    <svg class="icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
-                        <path d="M12,2C13.1,2 14,2.9 14,4C14,5.1 13.1,6 12,6C10.9,6 10,5.1 10,4C10,2.9 10.9,2 12,2M21,9V7L15,1V3H9V1L3,7V9H1V11H3L4,21H20L21,11H23V9M19,19H5L4.2,11H19.8L19,19Z"/>
+            <!-- Middleware Status -->
+            <div class="card status-card">
+                <div class="status-header">
+                    <svg viewBox="0 0 24 24" style="width: 32px; height: 32px; color: #3b82f6;">
+                        <path fill="currentColor" d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M11,16.5L6.5,12L7.91,10.59L11,13.67L16.59,8.09L18,9.5L11,16.5Z"/>
                     </svg>
-                    Middleware-Verbindung testen
-                </button>
-                <div id="test-results" style="margin-top: 16px;"></div>
+                    <h2>Middleware</h2>
+                </div>
+                <div class="status-body">
+                    <div class="status-item">
+                        <span class="status-label">Status:</span>
+                        <span class="status-badge success" id="middleware-status">Aktiv</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">E-Mail Service:</span>
+                        <span class="status-badge" id="email-status">Prüfen...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Rate Limiting:</span>
+                        <span class="status-value">Aktiviert</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Connection Test -->
+            <div class="card status-card">
+                <div class="status-header">
+                    <svg viewBox="0 0 24 24" style="width: 32px; height: 32px; color: #8b5cf6;">
+                        <path fill="currentColor" d="M12,21L15.6,16.2C14.6,15.45 13.35,15 12,15C10.65,15 9.4,15.45 8.4,16.2L12,21M12,3C7.95,3 4.21,4.34 1.2,6.6L3,9C5.5,7.12 8.62,6 12,6C15.38,6 18.5,7.12 21,9L22.8,6.6C19.79,4.34 16.05,3 12,3M12,9C9.3,9 6.81,9.89 4.8,11.4L6.6,13.8C8.1,12.67 9.97,12 12,12C14.03,12 15.9,12.67 17.4,13.8L19.2,11.4C17.19,9.89 14.7,9 12,9Z"/>
+                    </svg>
+                    <h2>Verbindungstest</h2>
+                </div>
+                <div class="status-body">
+                    <button onclick="testConnection()" class="btn btn-primary" id="test-btn" style="width: 100%; margin-bottom: 16px;">
+                        <svg viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                            <path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/>
+                        </svg>
+                        Verbindung testen
+                    </button>
+                    <div id="test-result"></div>
+                </div>
             </div>
         </div>
 
-        <!-- Production Mode Card -->
-        <div class="card">
-            <h2 class="card-title">Produktions-Modus</h2>
-            <p style="color: #6b7280; margin-bottom: 20px;">
-                Aktuell läuft das Frontend im <strong>Dummy-Modus</strong> für Entwicklungszwecke.
-                Sobald die Middleware verfügbar ist, kann hier auf den Produktions-Modus gewechselt werden.
-            </p>
-            <div class="form-group">
-                <label class="form-label" for="middleware-url">Middleware URL</label>
-                <input type="text" id="middleware-url" class="form-input" placeholder="z.B. http://localhost:8080/api">
+        <!-- System Info -->
+        <div class="card" style="margin-top: 24px;">
+            <h2 class="card-title">
+                <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;">
+                    <path fill="currentColor" d="M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/>
+                </svg>
+                System-Informationen
+            </h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Architektur:</span>
+                    <span class="info-value">Frontend → Middleware → Backend → McTime API</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Version:</span>
+                    <span class="info-value">2.0.0</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Framework:</span>
+                    <span class="info-value">Flask (Python)</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">API Version:</span>
+                    <span class="info-value">McTime API v2</span>
+                </div>
             </div>
-            <button onclick="switchToProduction()" class="btn btn-secondary" disabled style="margin-top: 16px;">
-                Produktions-Modus aktivieren
-            </button>
-            <p style="font-size: 14px; color: #6b7280; margin-top: 12px;">
-                <strong>Hinweis:</strong> Diese Funktion wird aktiviert, sobald die Middleware implementiert ist.
-            </p>
         </div>
     </main>
 
-    <script>
-        // Lädt Middleware-Status beim Seitenaufruf
-        document.addEventListener('DOMContentLoaded', function() {
-            loadMiddlewareStatus();
-        });
+    <style>
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+        
+        .status-card {
+            padding: 24px;
+        }
+        
+        .status-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .status-header h2 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+        
+        .status-body {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .status-label {
+            font-size: 14px;
+            color: #6b7280;
+        }
+        
+        .status-value {
+            font-size: 14px;
+            color: #1f2937;
+            font-weight: 500;
+        }
+        
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-badge.success {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .status-badge.warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-badge.error {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+        }
+        
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .info-label {
+            font-size: 12px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .info-value {
+            font-size: 14px;
+            color: #1f2937;
+            font-weight: 500;
+        }
+        
+        .test-result-box {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .test-result-box.success {
+            background: #dcfce7;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+        }
+        
+        .test-result-box.error {
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+        }
+    </style>
 
-        function loadMiddlewareStatus() {
-            fetch('/api/middleware/status')
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSystemStatus();
+        });
+        
+        function loadSystemStatus() {
+            fetch('/api/status')
                 .then(response => response.json())
                 .then(data => {
-                    const container = document.getElementById('middleware-status-container');
-                    container.innerHTML = `
-                        <div class="status-container">
-                            <span>Middleware Status:</span>
-                            <span class="status-indicator ${data.connected ? 'connected' : 'disconnected'}">
-                                ${data.connected ? 'Verbunden' : 'Getrennt'}
-                            </span>
-                        </div>
-                        <div style="margin-top: 12px; font-size: 14px; color: #6b7280;">
-                            URL: ${data.url || 'Nicht konfiguriert'}<br>
-                            Modus: ${data.dummy_mode ? 'Dummy-Modus' : 'Produktions-Modus'}
-                        </div>
-                    `;
+                    // Backend Status
+                    const backendStatus = document.getElementById('backend-status');
+                    const apiKeyStatus = document.getElementById('api-key-status');
+                    
+                    if (data.backend && data.backend.available) {
+                        backendStatus.textContent = 'Aktiv';
+                        backendStatus.className = 'status-badge success';
+                    } else {
+                        backendStatus.textContent = 'Inaktiv';
+                        backendStatus.className = 'status-badge error';
+                    }
+                    
+                    if (data.backend && data.backend.api_configured) {
+                        apiKeyStatus.textContent = 'Konfiguriert';
+                        apiKeyStatus.className = 'status-badge success';
+                    } else {
+                        apiKeyStatus.textContent = 'Fehlt';
+                        apiKeyStatus.className = 'status-badge error';
+                    }
+                    
+                    // Middleware Status
+                    const middlewareStatus = document.getElementById('middleware-status');
+                    if (data.middleware && data.middleware.available) {
+                        middlewareStatus.textContent = 'Aktiv';
+                        middlewareStatus.className = 'status-badge success';
+                    } else {
+                        middlewareStatus.textContent = 'Inaktiv';
+                        middlewareStatus.className = 'status-badge error';
+                    }
+                    
+                    checkEmailStatus();
                 })
                 .catch(error => {
-                    console.error('Error loading middleware status:', error);
+                    console.error('Error loading status:', error);
                 });
         }
-
-        function testMiddlewareConnection() {
-            const button = event.target;
-            const resultsDiv = document.getElementById('test-results');
-            
-            button.disabled = true;
-            button.textContent = 'Teste Verbindung...';
+        
+        function checkEmailStatus() {
+            const emailStatus = document.getElementById('email-status');
             
             fetch('/api/middleware/ping')
                 .then(response => response.json())
                 .then(data => {
-                    resultsDiv.innerHTML = `
-                        <div class="test-result ${data.success ? 'success' : 'error'}">
-                            <strong>Testergebnis:</strong> ${data.message}<br>
-                            <small>Antwortzeit: ${data.response_time || 'N/A'}ms</small>
-                        </div>
-                    `;
+                    if (data.status === 'healthy') {
+                        emailStatus.textContent = 'Bereit';
+                        emailStatus.className = 'status-badge success';
+                    } else {
+                        emailStatus.textContent = 'SMTP prüfen';
+                        emailStatus.className = 'status-badge warning';
+                    }
+                })
+                .catch(() => {
+                    emailStatus.textContent = 'Nicht konfiguriert';
+                    emailStatus.className = 'status-badge warning';
+                });
+        }
+        
+        function testConnection() {
+            const btn = document.getElementById('test-btn');
+            const resultDiv = document.getElementById('test-result');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<span>Teste...</span>';
+            
+            const startTime = Date.now();
+            
+            fetch('/api/middleware/ping')
+                .then(response => response.json())
+                .then(data => {
+                    const responseTime = Date.now() - startTime;
+                    
+                    if (data.status === 'healthy' || data.connected) {
+                        resultDiv.innerHTML = `
+                            <div class="test-result-box success">
+                                <strong>✅ Verbindung erfolgreich!</strong><br>
+                                <small>Antwortzeit: ${responseTime}ms</small>
+                            </div>
+                        `;
+                    } else {
+                        resultDiv.innerHTML = `
+                            <div class="test-result-box error">
+                                <strong>⚠️ Verbindung fehlgeschlagen</strong><br>
+                                <small>${data.message || 'Unbekannter Fehler'}</small>
+                            </div>
+                        `;
+                    }
                 })
                 .catch(error => {
-                    resultsDiv.innerHTML = `
-                        <div class="test-result error">
-                            <strong>Fehler:</strong> Verbindungstest fehlgeschlagen<br>
+                    resultDiv.innerHTML = `
+                        <div class="test-result-box error">
+                            <strong>❌ Verbindungsfehler</strong><br>
                             <small>${error.message}</small>
                         </div>
                     `;
                 })
                 .finally(() => {
-                    button.disabled = false;
-                    button.innerHTML = `
-                        <svg class="icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
-                            <path d="M12,2C13.1,2 14,2.9 14,4C14,5.1 13.1,6 12,6C10.9,6 10,5.1 10,4C10,2.9 10.9,2 12,2M21,9V7L15,1V3H9V1L3,7V9H1V11H3L4,21H20L21,11H23V9M19,19H5L4.2,11H19.8L19,19Z"/>
+                    btn.disabled = false;
+                    btn.innerHTML = `
+                        <svg viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                            <path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/>
                         </svg>
-                        Middleware-Verbindung testen
+                        Verbindung testen
                     `;
                 });
         }
-
-        function switchToProduction() {
-            const url = document.getElementById('middleware-url').value;
-            
-            if (!url) {
-                alert('Bitte gib die Middleware-URL ein.');
-                return;
-            }
-
-            // TODO: Implementierung wenn Middleware verfügbar ist
-            alert('Produktions-Modus wird implementiert, sobald die Middleware verfügbar ist.');
-        }
-
-        // Add test result styles
-        const style = document.createElement('style');
-        style.textContent = `
-            .test-result {
-                padding: 12px 16px;
-                border-radius: 6px;
-                font-size: 14px;
-            }
-            .test-result.success {
-                background: #dcfce7;
-                border: 1px solid #bbf7d0;
-                color: #166534;
-            }
-            .test-result.error {
-                background: #fee2e2;
-                border: 1px solid #fecaca;
-                color: #dc2626;
-            }
-        `;
-        document.head.appendChild(style);
     </script>
 
     <!-- Footer -->
-    <footer class="footer">
-        <div class="footer-container" style="display: flex; justify-content: center; align-items: center; gap: 32px; flex-wrap: wrap;">
-            <div style="text-align: center;">
-                <h4 style="margin: 0 0 8px 0; color: #374151; font-size: 16px;">Rechtliches</h4>
-                <a href="https://mctime.com/de/legal/impressum/" target="_blank" style="color: #6b7280; text-decoration: none; font-size: 14px;">Impressum</a>
-            </div>
-            <div style="text-align: center;">
-                <h4 style="margin: 0 0 8px 0; color: #374151; font-size: 16px;">Technischer Support</h4>
-                <div style="display: flex; flex-direction: column; gap: 4px;">
-                    <a href="mailto:support@mctime.com" style="color: #6b7280; text-decoration: none; font-size: 14px;">support@mctime.com</a>
-                    <span style="color: #9ca3af; font-size: 12px;">Mc-Time API Data Bridge v2.0</span>
+    <footer class="modern-footer">
+        <div class="footer-main">
+            <div class="footer-brand">
+                <div class="footer-logo">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                        <polyline points="12,6 12,12 16,14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>McTime Data Bridge</span>
                 </div>
+                <p class="footer-tagline">Einheitliche Daten. Einheitlicher Erfolg.</p>
+            </div>
+            
+            <div class="footer-links">
+                <div class="footer-link-group">
+                    <h4>Rechtliches</h4>
+                    <a href="https://mctime.com/de/legal/impressum/" target="_blank">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                        </svg>
+                        Impressum
+                    </a>
+                    <a href="https://mctime.com/de/legal/datenschutz/" target="_blank">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                        Datenschutz
+                    </a>
+                </div>
+                
+                <div class="footer-link-group">
+                    <h4>Support</h4>
+                    <a href="mailto:support@mctime.com">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22,6 12,13 2,6"/>
+                        </svg>
+                        support@mctime.com
+                    </a>
+                    <a href="/api-config">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                        Systemstatus
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <div class="footer-bottom-content">
+                <span>© 2025 McTime API Data Bridge</span>
+                <span class="footer-separator">•</span>
+                <span class="footer-version">Version 2.0</span>
             </div>
         </div>
     </footer>

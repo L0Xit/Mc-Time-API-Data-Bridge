@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>McTime API Data Bridge</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='mctime_icon.png') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Flatpickr für moderne Datepicker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -12,9 +18,9 @@
     <header class="header">
         <div class="header-content">
             <div class="logo-section">
-                <img src="{{ url_for('static', filename='mctime_logo.png') }}" alt="Daten — Datentransparenz & Konsistenz, unser Ding" class="logo">
-                <span class="logo-text">Daten — Datentransparenz & Konsistenz, unser Ding</span>
+                <img src="{{ url_for('static', filename='mctime_logo.png') }}" alt="McTime" class="logo">
             </div>
+            <div class="slogan">Einheitliche Daten. Einheitlicher Erfolg</div>
         </div>
     </header>
 
@@ -25,17 +31,12 @@
                 <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
             </svg>
         </div>
-        <div class="nav-icon" title="Charts">
+        <div class="nav-icon" title="Charts" onclick="window.location.href = '{{ url_for('charts') }}'">
             <svg class="icon" viewBox="0 0 24 24">
                 <path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L3.5 15.9z"/>
             </svg>
         </div>
-        <div class="nav-icon" title="Time">
-            <svg class="icon" viewBox="0 0 24 24">
-                <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z"/>
-            </svg>
-        </div>
-        <div class="nav-icon" title="Profile" onclick="window.location.href = '{{ url_for('api_config') }}'">
+        <div class="nav-icon" title="Einstellungen" onclick="window.location.href = '{{ url_for('api_config') }}'">
             <svg class="icon" viewBox="0 0 24 24">
                 <path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/>
             </svg>
@@ -75,8 +76,30 @@
                             </svg>
                             Firma
                         </label>
-                        <div class="select-wrapper">
-                            <select id="company-select" name="company" class="modern-select">
+                        <div class="custom-select-wrapper" data-target="company-select">
+                            <div class="custom-select-trigger">
+                                <span class="custom-select-value">Alle Firmen</span>
+                                <svg class="custom-select-arrow" viewBox="0 0 24 24">
+                                    <path fill="currentColor" d="M7,10L12,15L17,10H7Z"/>
+                                </svg>
+                            </div>
+                            <div class="custom-select-dropdown">
+                                <div class="custom-select-search">
+                                    <svg viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                                        <path fill="currentColor" d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
+                                    </svg>
+                                    <input type="text" placeholder="Suchen..." class="custom-select-search-input">
+                                </div>
+                                <div class="custom-select-options">
+                                    <div class="custom-select-option selected" data-value="">Alle Firmen</div>
+                                    {% for company in companies %}
+                                    <div class="custom-select-option" data-value="{{ company.id if company is mapping else company }}">
+                                        {{ company.name if company is mapping else company }}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <select id="company-select" name="company" class="hidden-select">
                                 <option value="">Alle Firmen</option>
                                 {% for company in companies %}
                                 <option value="{{ company.id if company is mapping else company }}">
@@ -84,9 +107,6 @@
                                 </option>
                                 {% endfor %}
                             </select>
-                            <svg class="select-arrow" viewBox="0 0 24 24">
-                                <path fill="currentColor" d="M7,10L12,15L17,10H7Z"/>
-                            </svg>
                         </div>
                     </div>
                     
@@ -98,8 +118,30 @@
                             </svg>
                             Mitarbeiter
                         </label>
-                        <div class="select-wrapper">
-                            <select id="employee-select" name="employee" class="modern-select">
+                        <div class="custom-select-wrapper" data-target="employee-select">
+                            <div class="custom-select-trigger">
+                                <span class="custom-select-value">Mitarbeiter wählen...</span>
+                                <svg class="custom-select-arrow" viewBox="0 0 24 24">
+                                    <path fill="currentColor" d="M7,10L12,15L17,10H7Z"/>
+                                </svg>
+                            </div>
+                            <div class="custom-select-dropdown">
+                                <div class="custom-select-search">
+                                    <svg viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                                        <path fill="currentColor" d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
+                                    </svg>
+                                    <input type="text" placeholder="Suchen..." class="custom-select-search-input">
+                                </div>
+                                <div class="custom-select-options">
+                                    <div class="custom-select-option" data-value="">Mitarbeiter wählen...</div>
+                                    {% for employee in employees %}
+                                    <div class="custom-select-option" data-value="{{ employee.id if employee is mapping else employee }}">
+                                        {{ employee.name if employee is mapping else employee }}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <select id="employee-select" name="employee" class="hidden-select">
                                 <option value="">Mitarbeiter wählen...</option>
                                 {% for employee in employees %}
                                 <option value="{{ employee.id if employee is mapping else employee }}">
@@ -107,9 +149,6 @@
                                 </option>
                                 {% endfor %}
                             </select>
-                            <svg class="select-arrow" viewBox="0 0 24 24">
-                                <path fill="currentColor" d="M7,10L12,15L17,10H7Z"/>
-                            </svg>
                         </div>
                     </div>
                     
@@ -122,7 +161,10 @@
                             Von
                         </label>
                         <div class="date-input-wrapper">
-                            <input type="date" id="date-from" name="date_from" class="modern-date-input">
+                            <input type="text" id="date-from" name="date_from" class="modern-date-input" placeholder="Datum wählen...">
+                            <svg class="date-icon" viewBox="0 0 24 24">
+                                <path fill="currentColor" d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z"/>
+                            </svg>
                         </div>
                     </div>
                     
@@ -135,18 +177,12 @@
                             Bis
                         </label>
                         <div class="date-input-wrapper">
-                            <input type="date" id="date-to" name="date_to" class="modern-date-input">
+                            <input type="text" id="date-to" name="date_to" class="modern-date-input" placeholder="Datum wählen...">
+                            <svg class="date-icon" viewBox="0 0 24 24">
+                                <path fill="currentColor" d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z"/>
+                            </svg>
                         </div>
                     </div>
-                </div>
-                
-                <!-- Schnellauswahl für Zeitraum -->
-                <div class="quick-date-buttons">
-                    <button type="button" class="quick-btn" onclick="setDateRange('today')">Heute</button>
-                    <button type="button" class="quick-btn" onclick="setDateRange('week')">Diese Woche</button>
-                    <button type="button" class="quick-btn" onclick="setDateRange('month')">Dieser Monat</button>
-                    <button type="button" class="quick-btn" onclick="setDateRange('lastMonth')">Letzter Monat</button>
-                    <button type="button" class="quick-btn" onclick="setDateRange('year')">Dieses Jahr</button>
                 </div>
                 
                 <div class="filter-actions">
@@ -207,13 +243,23 @@
                     </div>
                     
                     <div class="form-group">
+                        <label class="form-label" for="email-anrede">Anrede:</label>
+                        <input type="text" id="email-anrede" name="email_anrede" class="form-input" placeholder="z.B. Sehr geehrte Damen und Herren,">
+                    </div>
+                    
+                    <div class="form-group">
                         <label class="form-label" for="email-subject">Betreff:</label>
-                        <input type="text" id="email-subject" name="email_subject" class="form-input" placeholder="Zeiterfassung Export">
+                        <input type="text" id="email-subject" name="email_subject" class="form-input" placeholder="Wird nach Datenladen generiert..." readonly style="background: #f1f5f9; color: #374151;">
+                        <small id="email-subject-hint" style="color: #6b7280; font-size: 12px;">Zeiterfassungsexport für [Mitarbeiter] [Zeitraum]</small>
                     </div>
                     
                     <div class="form-group">
                         <label class="form-label" for="email-message">Nachricht:</label>
-                        <textarea id="email-message" name="email_message" class="form-input" rows="4" placeholder="Ihre Nachricht hier..."></textarea>
+                        <textarea id="email-message" name="email_message" class="form-input" rows="4" readonly style="background: #f3f4f6;">Im Anhang befindet sich der Zeiterfassungsexport für den angegebenen Zeitraum.
+
+Bei Rückfragen stehe ich Ihnen gerne zur Verfügung.
+
+Mit freundlichen Grüßen</textarea>
                     </div>
                     
                     <div class="checkbox-group">
@@ -239,6 +285,36 @@
             // Setze Standard-Datum auf diesen Monat
             setDateRange('month');
         });
+        
+        // Funktion zum Aktualisieren des Betreff-Vorschau
+        function updateEmailSubjectPreview() {
+            const employeeSelect = document.getElementById('employee-select');
+            const employeeName = employeeSelect.selectedOptions[0]?.text || '';
+            const dateFrom = document.getElementById('date-from').value;
+            const dateTo = document.getElementById('date-to').value;
+            
+            // Format dates (YYYY-MM-DD to DD.MM.YYYY)
+            const formatDateForDisplay = (dateStr) => {
+                if (!dateStr) return '';
+                const [year, month, day] = dateStr.split('-');
+                return `${day}.${month}.${year}`;
+            };
+            
+            if (employeeName && employeeName !== 'Mitarbeiter wählen...' && dateFrom && dateTo) {
+                const subject = `Zeiterfassungsexport für ${employeeName} (${formatDateForDisplay(dateFrom)} - ${formatDateForDisplay(dateTo)})`;
+                const subjectField = document.getElementById('email-subject');
+                const hintField = document.getElementById('email-subject-hint');
+                
+                subjectField.value = subject;
+                subjectField.style.background = '#ecfdf5';
+                subjectField.style.borderColor = '#10b981';
+                
+                if (hintField) {
+                    hintField.innerHTML = '✓ Betreff automatisch generiert';
+                    hintField.style.color = '#10b981';
+                }
+            }
+        }
         
         // Schnellauswahl für Zeitraum
         function setDateRange(range) {
@@ -412,6 +488,9 @@
                     if (result.status === 'success' && result.data && result.data.timeEntries) {
                         updateTable(result.data.timeEntries);
                         completeLoadingAnimation(result.data.timeEntries.length || 0);
+                        
+                        // Automatisch Betreff generieren und anzeigen
+                        updateEmailSubjectPreview();
                     } else {
                         console.error('API Error:', result.message);
                         updateTable([]);
@@ -520,7 +599,8 @@
             
             // Neue Felder
             const emailTo = document.getElementById('email-to').value;
-            const emailSubject = document.getElementById('email-subject').value;
+            const emailAnrede = document.getElementById('email-anrede').value;
+            const emailSubjectField = document.getElementById('email-subject');
             const emailMessage = document.getElementById('email-message').value;
             const attachCsv = document.getElementById('attach-csv').checked;
             
@@ -534,12 +614,26 @@
                 return;
             }
             
+            if (!emailAnrede) {
+                alert('Bitte geben Sie eine Anrede ein.');
+                return;
+            }
+            
             // Format dates for API (YYYY-MM-DD to DD.MM.YYYY)
             const formatDateForAPI = (dateStr) => {
                 if (!dateStr) return '';
                 const [year, month, day] = dateStr.split('-');
                 return `${day}.${month}.${year}`;
             };
+            
+            // Betreff aus dem Feld nehmen (bereits generiert) oder neu generieren
+            let emailSubject = emailSubjectField.value;
+            if (!emailSubject) {
+                emailSubject = `Zeiterfassungsexport für ${employeeName} (${formatDateForAPI(dateFrom)} - ${formatDateForAPI(dateTo)})`;
+            }
+            
+            // Vollständige Nachricht mit Anrede
+            const fullMessage = `${emailAnrede}\n\n${emailMessage}`;
             
             // Show loading state
             const btn = event?.target;
@@ -556,8 +650,8 @@
                 date_from: formatDateForAPI(dateFrom),
                 date_to: formatDateForAPI(dateTo),
                 email_to: emailTo,
-                email_subject: emailSubject || `Zeiterfassung ${employeeName} - ${formatDateForAPI(dateFrom)} bis ${formatDateForAPI(dateTo)}`,
-                message: emailMessage,
+                email_subject: emailSubject,
+                message: fullMessage,
                 attach_csv: attachCsv
             };
             
@@ -593,20 +687,342 @@
     </script>
 
     <!-- Footer -->
-    <footer class="footer">
-        <div class="footer-container" style="display: flex; justify-content: center; align-items: center; gap: 32px; flex-wrap: wrap;">
-            <div style="text-align: center;">
-                <h4 style="margin: 0 0 8px 0; color: #374151; font-size: 16px;">Rechtliches</h4>
-                <a href="https://mctime.com/de/legal/impressum/" target="_blank" style="color: #6b7280; text-decoration: none; font-size: 14px;">Impressum</a>
+    <footer class="modern-footer">
+        <div class="footer-main">
+            <div class="footer-brand">
+                <div class="footer-logo">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                        <polyline points="12,6 12,12 16,14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>McTime Data Bridge</span>
+                </div>
+                <p class="footer-tagline">Einheitliche Daten. Einheitlicher Erfolg.</p>
             </div>
-            <div style="text-align: center;">
-                <h4 style="margin: 0 0 8px 0; color: #374151; font-size: 16px;">Technischer Support</h4>
-                <div style="display: flex; flex-direction: column; gap: 4px;">
-                    <a href="mailto:support@mctime.com" style="color: #6b7280; text-decoration: none; font-size: 14px;">support@mctime.com</a>
-                    <span style="color: #9ca3af; font-size: 12px;">Mc-Time API Data Bridge v2.0</span>
+            
+            <div class="footer-links">
+                <div class="footer-link-group">
+                    <h4>Rechtliches</h4>
+                    <a href="https://mctime.com/de/legal/impressum/" target="_blank">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                        </svg>
+                        Impressum
+                    </a>
+                    <a href="https://mctime.com/de/legal/datenschutz/" target="_blank">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                        Datenschutz
+                    </a>
+                </div>
+                
+                <div class="footer-link-group">
+                    <h4>Support</h4>
+                    <a href="mailto:support@mctime.com">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22,6 12,13 2,6"/>
+                        </svg>
+                        support@mctime.com
+                    </a>
+                    <a href="/api-config">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                        Systemstatus
+                    </a>
                 </div>
             </div>
         </div>
+        
+        <div class="footer-bottom">
+            <div class="footer-bottom-content">
+                <span>© 2025 McTime API Data Bridge</span>
+                <span class="footer-separator">•</span>
+                <span class="footer-version">Version 2.0</span>
+            </div>
+        </div>
     </footer>
+
+    <!-- Flatpickr für moderne Datepicker -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/de.js"></script>
+    
+    <script>
+        // Initialize Flatpickr Datepickers
+        document.addEventListener('DOMContentLoaded', function() {
+            const flatpickrConfig = {
+                locale: 'de',
+                dateFormat: 'Y-m-d',
+                altInput: true,
+                altFormat: 'd.m.Y',
+                allowInput: true,
+                disableMobile: true,
+                animate: true,
+                monthSelectorType: 'dropdown',
+                prevArrow: '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M15.41,16.58L10.83,12L15.41,7.41L14,6L8,12L14,18L15.41,16.58Z"/></svg>',
+                nextArrow: '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z"/></svg>'
+            };
+            
+            // Von-Datum
+            const dateFromPicker = flatpickr('#date-from', {
+                ...flatpickrConfig,
+                defaultDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                onChange: function(selectedDates, dateStr) {
+                    if (dateToPicker && selectedDates[0]) {
+                        dateToPicker.set('minDate', selectedDates[0]);
+                    }
+                }
+            });
+            
+            // Bis-Datum
+            const dateToPicker = flatpickr('#date-to', {
+                ...flatpickrConfig,
+                defaultDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0),
+                onChange: function(selectedDates, dateStr) {
+                    if (dateFromPicker && selectedDates[0]) {
+                        dateFromPicker.set('maxDate', selectedDates[0]);
+                    }
+                }
+            });
+            
+            // Custom Select Functionality
+            initCustomSelects();
+        });
+        
+        function initCustomSelects() {
+            const customSelects = document.querySelectorAll('.custom-select-wrapper');
+            
+            customSelects.forEach(wrapper => {
+                const trigger = wrapper.querySelector('.custom-select-trigger');
+                const dropdown = wrapper.querySelector('.custom-select-dropdown');
+                const searchInput = wrapper.querySelector('.custom-select-search-input');
+                const options = wrapper.querySelectorAll('.custom-select-option');
+                const valueDisplay = wrapper.querySelector('.custom-select-value');
+                const hiddenSelect = wrapper.querySelector('.hidden-select');
+                const arrow = wrapper.querySelector('.custom-select-arrow');
+                
+                // Toggle dropdown
+                trigger.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    closeAllDropdowns();
+                    wrapper.classList.toggle('open');
+                    if (wrapper.classList.contains('open') && searchInput) {
+                        setTimeout(() => searchInput.focus(), 50);
+                    }
+                });
+                
+                // Search functionality
+                if (searchInput) {
+                    searchInput.addEventListener('input', (e) => {
+                        const searchTerm = e.target.value.toLowerCase();
+                        options.forEach(option => {
+                            const text = option.textContent.toLowerCase();
+                            option.style.display = text.includes(searchTerm) ? 'flex' : 'none';
+                        });
+                    });
+                    
+                    searchInput.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                    });
+                }
+                
+                // Option selection
+                options.forEach(option => {
+                    option.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const value = option.dataset.value;
+                        const text = option.textContent.trim();
+                        
+                        // Update display
+                        valueDisplay.textContent = text;
+                        
+                        // Update hidden select
+                        if (hiddenSelect) {
+                            hiddenSelect.value = value;
+                            hiddenSelect.dispatchEvent(new Event('change'));
+                        }
+                        
+                        // Update selected state
+                        options.forEach(opt => opt.classList.remove('selected'));
+                        option.classList.add('selected');
+                        
+                        // Close dropdown
+                        wrapper.classList.remove('open');
+                        
+                        // Clear search
+                        if (searchInput) {
+                            searchInput.value = '';
+                            options.forEach(opt => opt.style.display = 'flex');
+                        }
+                    });
+                });
+            });
+            
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', closeAllDropdowns);
+        }
+        
+        function closeAllDropdowns() {
+            document.querySelectorAll('.custom-select-wrapper.open').forEach(wrapper => {
+                wrapper.classList.remove('open');
+            });
+        }
+        
+        // Dynamisches Laden der Mitarbeiter basierend auf Firma
+        async function loadEmployeesByCompany(companyId) {
+            const employeeWrapper = document.querySelector('[data-target="employee-select"]');
+            const employeeOptions = employeeWrapper.querySelector('.custom-select-options');
+            const employeeSelect = document.getElementById('employee-select');
+            const valueDisplay = employeeWrapper.querySelector('.custom-select-value');
+            
+            // Hole den Firmennamen aus dem Custom Select
+            const companyWrapper = document.querySelector('[data-target="company-select"]');
+            const companyName = companyWrapper.querySelector('.custom-select-value').textContent.trim();
+            
+            // Loading-Anzeige
+            employeeOptions.innerHTML = '<div class="custom-select-option" style="justify-content: center;"><svg class="loading-spinner" viewBox="0 0 24 24" style="width: 20px; height: 20px; animation: spin 1s linear infinite;"><path fill="currentColor" d="M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z"/></svg></div>';
+            valueDisplay.textContent = 'Laden...';
+            
+            try {
+                let url = '/api/employees';
+                const params = [];
+                
+                if (companyId) {
+                    params.push(`organization_id=${encodeURIComponent(companyId)}`);
+                }
+                if (companyName && companyName !== 'Alle Firmen') {
+                    params.push(`organization_name=${encodeURIComponent(companyName)}`);
+                }
+                if (params.length > 0) {
+                    url += '?' + params.join('&');
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                // Die API gibt entweder ein Array oder ein Object mit employees zurück
+                const employees = Array.isArray(data) ? data : (data.employees || []);
+                
+                // Hidden Select leeren und neu aufbauen
+                employeeSelect.innerHTML = '<option value="">Mitarbeiter wählen...</option>';
+                
+                // Custom Options leeren und neu aufbauen
+                let optionsHTML = '<div class="custom-select-option" data-value="">Mitarbeiter wählen...</div>';
+                
+                if (employees && employees.length > 0) {
+                    employees.forEach(emp => {
+                        const id = emp.id || emp;
+                        const name = emp.name || emp;
+                        
+                        // Hidden select option
+                        const option = document.createElement('option');
+                        option.value = id;
+                        option.textContent = name;
+                        employeeSelect.appendChild(option);
+                        
+                        // Custom option
+                        optionsHTML += `<div class="custom-select-option" data-value="${id}">${name}</div>`;
+                    });
+                } else {
+                    optionsHTML += '<div class="custom-select-option" data-value="" style="color: var(--text-secondary);">Keine Mitarbeiter gefunden</div>';
+                }
+                
+                employeeOptions.innerHTML = optionsHTML;
+                valueDisplay.textContent = 'Mitarbeiter wählen...';
+                
+                // Event Listener für neue Options hinzufügen
+                attachEmployeeOptionListeners(employeeWrapper);
+                
+            } catch (error) {
+                console.error('Fehler beim Laden der Mitarbeiter:', error);
+                employeeOptions.innerHTML = '<div class="custom-select-option" data-value="">Fehler beim Laden</div>';
+                valueDisplay.textContent = 'Mitarbeiter wählen...';
+            }
+        }
+        
+        function attachEmployeeOptionListeners(wrapper) {
+            const options = wrapper.querySelectorAll('.custom-select-option');
+            const valueDisplay = wrapper.querySelector('.custom-select-value');
+            const hiddenSelect = wrapper.querySelector('.hidden-select');
+            const searchInput = wrapper.querySelector('.custom-select-search-input');
+            
+            // Suchfunktion für dynamische Optionen
+            if (searchInput) {
+                // Entferne alte Event Listener durch Klonen
+                const newSearchInput = searchInput.cloneNode(true);
+                searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+                
+                newSearchInput.addEventListener('input', (e) => {
+                    const searchTerm = e.target.value.toLowerCase();
+                    const currentOptions = wrapper.querySelectorAll('.custom-select-option');
+                    currentOptions.forEach(option => {
+                        const text = option.textContent.toLowerCase();
+                        option.style.display = text.includes(searchTerm) ? 'flex' : 'none';
+                    });
+                });
+                
+                newSearchInput.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                });
+            }
+            
+            options.forEach(option => {
+                option.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const value = option.dataset.value;
+                    const text = option.textContent.trim();
+                    
+                    // Update display
+                    valueDisplay.textContent = text;
+                    
+                    // Update hidden select
+                    if (hiddenSelect) {
+                        hiddenSelect.value = value;
+                        hiddenSelect.dispatchEvent(new Event('change'));
+                    }
+                    
+                    // Update selected state
+                    options.forEach(opt => opt.classList.remove('selected'));
+                    option.classList.add('selected');
+                    
+                    // Close dropdown
+                    wrapper.classList.remove('open');
+                    
+                    // Clear search
+                    const currentSearchInput = wrapper.querySelector('.custom-select-search-input');
+                    if (currentSearchInput) {
+                        currentSearchInput.value = '';
+                        options.forEach(opt => opt.style.display = 'flex');
+                    }
+                });
+            });
+        }
+        
+        // Event Listener für Firmenauswahl - DEAKTIVIERT
+        // Die McTime API unterstützt keine Filterung von Mitarbeitern nach Organisation (fehlende Berechtigungen)
+        /*
+        document.addEventListener('DOMContentLoaded', function() {
+            const companySelect = document.getElementById('company-select');
+            if (companySelect) {
+                companySelect.addEventListener('change', function() {
+                    loadEmployeesByCompany(this.value);
+                });
+            }
+        });
+        */
+    </script>
+    
+    <style>
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </body>
 </html>

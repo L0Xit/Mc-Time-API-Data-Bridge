@@ -132,14 +132,17 @@ class Middleware:
                 return [{"id": org.get("id"), "name": org.get("organizationName")} for org in orgs]
             return []
     
-    def get_employees(self, organization_id: str = None) -> List[Dict]:
+    def get_employees(self, organization_id: str = None, organization_name: str = None) -> List[Dict]:
         """Holt Liste aller Mitarbeiter - Backend primär"""
         if self.backend:
-            return self.backend.mctime_api.get_employees(organization_id)
+            return self.backend.mctime_api.get_employees(organization_id, organization_name)
         else:
             # Fallback: Direkte API-Calls
             params = {"roles": "employee"}
-            if organization_id:
+            
+            if organization_name:
+                params["organizationName"] = organization_name
+            elif organization_id:
                 params["organizationId"] = organization_id
             
             response = self.request_handler.get("/users", params=params)

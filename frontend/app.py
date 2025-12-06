@@ -79,10 +79,15 @@ def home():
                          employees=employees,
                          db_status=connection_status)
 
-@app.route('/api_config')
+@app.route('/api-config')
 def api_config():
     """Middleware-Konfigurationsseite"""
     return render_template('api_config.html')
+
+@app.route('/charts')
+def charts():
+    """Charts und Statistiken Seite"""
+    return render_template('charts.html')
 
 @app.route('/page_1')
 def page_1():
@@ -315,7 +320,12 @@ def get_employees():
         return jsonify({"error": "Middleware nicht initialisiert"}), 500
     
     org_id = request.args.get('organization_id')
-    employees = middleware.get_employees(org_id)
+    org_name = request.args.get('organization_name')
+    employees = middleware.get_employees(org_id, org_name)
+    
+    # Debug: Zeige wie viele Mitarbeiter gefunden wurden
+    print(f"API /api/employees - org_id: {org_id}, org_name: {org_name}, gefunden: {len(employees)} Mitarbeiter")
+    
     return jsonify(employees)
 
 
@@ -327,6 +337,287 @@ def get_organizations():
     
     organizations = middleware.get_organizations()
     return jsonify(organizations)
+
+
+@app.route('/api/chart-stats')
+def get_chart_stats():
+    """
+    Holt aggregierte Statistiken für Charts
+    
+    Query-Parameter:
+    - filter: 'month' | 'year' | 'alltime' (default: 'month')
+    - month: 'YYYY-MM' Format für spezifischen Monat (nur wenn filter='month')
+    
+    Gibt zurück: Statistiken für alle Mitarbeiter im gewählten Zeitraum
+    """
+    from datetime import datetime, timedelta
+    from collections import defaultdict
+    import calendar
+    
+    # Deutsche Monatsnamen
+    german_months = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 
+                     'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
+    
+    if not backend_service and not middleware:
+        return jsonify({"error": "Kein Service verfügbar"}), 500
+    
+    # Filter auswerten
+    time_filter = request.args.get('filter', 'month')
+    month_param = request.args.get('month', None)  # YYYY-MM Format
+    
+    today = datetime.now()
+    
+    # Hilfsfunktion: Monatsbereiche generieren
+    def generate_month_ranges(start_date, end_date):
+        """Generiert eine Liste von (start, end) Tuples für jeden Monat im Bereich"""
+        ranges = []
+        current = start_date.replace(day=1)
+        while current <= end_date:
+            month_start = current.strftime('%Y-%m-%d')
+            # Letzter Tag des Monats
+            last_day = calendar.monthrange(current.year, current.month)[1]
+            month_end_date = current.replace(day=last_day)
+            if month_end_date > end_date:
+                month_end_date = end_date
+            month_end = month_end_date.strftime('%Y-%m-%d')
+            ranges.append((month_start, month_end))
+            
+            # Nächster Monat
+            if current.month == 12:
+                current = current.replace(year=current.year + 1, month=1)
+            else:
+                current = current.replace(month=current.month + 1)
+        return ranges
+    
+    # Datumsbereich basierend auf Filter berechnen
+    if time_filter == 'month':
+        if month_param:
+            # Spezifischer Monat aus Parameter
+            try:
+                year, month = map(int, month_param.split('-'))
+                target_date = datetime(year, month, 1)
+                date_from = target_date.strftime('%Y-%m-%d')
+                last_day = calendar.monthrange(year, month)[1]
+                date_to = target_date.replace(day=last_day).strftime('%Y-%m-%d')
+                filter_label = f"{german_months[month-1]} {year}"
+            except:
+                # Fallback auf aktuellen Monat
+                date_from = today.replace(day=1).strftime('%Y-%m-%d')
+                last_day = calendar.monthrange(today.year, today.month)[1]
+                date_to = today.replace(day=last_day).strftime('%Y-%m-%d')
+                filter_label = f"{german_months[today.month-1]} {today.year}"
+        else:
+            # Aktueller Monat
+            date_from = today.replace(day=1).strftime('%Y-%m-%d')
+            last_day = calendar.monthrange(today.year, today.month)[1]
+            date_to = today.replace(day=last_day).strftime('%Y-%m-%d')
+            filter_label = f"{german_months[today.month-1]} {today.year}"
+        month_ranges = [(date_from, date_to)]  # Nur ein Monat
+        
+    elif time_filter == 'year':
+        # Aktuelles Jahr - Monat für Monat abrufen (API-Limit umgehen)
+        start_date = datetime(today.year, 1, 1)
+        end_date = today
+        date_from = start_date.strftime('%Y-%m-%d')
+        date_to = end_date.strftime('%Y-%m-%d')
+        filter_label = f"Jahr {today.year}"
+        month_ranges = generate_month_ranges(start_date, end_date)
+        
+    else:  # alltime - September 2025 bis heute
+        start_date = datetime(2025, 9, 1)
+        end_date = today
+        date_from = start_date.strftime('%Y-%m-%d')
+        date_to = end_date.strftime('%Y-%m-%d')
+        filter_label = "Alle Daten (ab Sep 2025)"
+        month_ranges = generate_month_ranges(start_date, end_date)
+    
+    try:
+        # Alle Mitarbeiter holen
+        if backend_service:
+            employees = backend_service.get_form_data().get('employees', [])
+        elif middleware:
+            employees = middleware.get_employees()
+        else:
+            employees = []
+        
+        print(f"Chart-Stats: {len(employees)} Mitarbeiter gefunden, {len(month_ranges)} Monats-Bereiche")
+        
+        # Statistiken sammeln
+        total_hours = 0.0
+        employee_stats = []
+        weekday_hours = defaultdict(float)  # 0=Mo, 1=Di, ..., 6=So
+        monthly_hours = defaultdict(float)  # "2024-09", "2024-10", etc.
+        daily_hours = defaultdict(float)    # "2024-09-01", "2024-09-02", etc.
+        all_time_entries = []
+        
+        for emp in employees:
+            emp_id = emp.get('id') or emp.get('value')
+            emp_name = emp.get('name') or emp.get('label', 'Unbekannt')
+            
+            if not emp_id:
+                continue
+            
+            print(f"  Lade Daten für {emp_name} ({emp_id})...")
+            
+            # Zeiteinträge für diesen Mitarbeiter holen (monatweise um API-Limit zu umgehen)
+            time_entries = []
+            for m_start, m_end in month_ranges:
+                try:
+                    if backend_service:
+                        entries = backend_service.mctime_api.get_time_entries(
+                            employee_id=emp_id,
+                            date_from=m_start,
+                            date_to=m_end
+                        )
+                    elif middleware:
+                        entries = middleware.get_time_entries(
+                            employee_id=emp_id,
+                            date_from=m_start,
+                            date_to=m_end
+                        )
+                    else:
+                        entries = []
+                    time_entries.extend(entries)
+                except Exception as e:
+                    print(f"    Fehler bei {m_start} bis {m_end}: {e}")
+                    continue
+            
+            print(f"    -> {len(time_entries)} Einträge gefunden")
+            
+            emp_total = 0.0
+            for entry in time_entries:
+                work_hours = entry.get('actual_work_hours', 0) or 0
+                emp_total += work_hours
+                
+                # Wochentag-Statistik und Tages-Statistik
+                try:
+                    from_date = entry.get('from', '')
+                    if from_date:
+                        dt = datetime.fromisoformat(from_date.replace('Z', '+00:00'))
+                        weekday_hours[dt.weekday()] += work_hours
+                        
+                        # Monats-Statistik
+                        month_key = dt.strftime('%Y-%m')
+                        monthly_hours[month_key] += work_hours
+                        
+                        # Tages-Statistik
+                        day_key = dt.strftime('%Y-%m-%d')
+                        daily_hours[day_key] += work_hours
+                except:
+                    pass
+                
+                # Projekt aus comment extrahieren (z.B. "Software, ECU - Chiptuning" oder "Programming")
+                comment = entry.get('comment', '') or ''
+                comment = comment.strip()
+                if comment:
+                    # Bereinige den Kommentar - entferne Zeilenumbrüche
+                    project_name = comment.replace('\n', '').strip()
+                else:
+                    project_name = entry.get('organizationName', 'Sonstiges') or 'Sonstiges'
+                
+                all_time_entries.append({
+                    'name': emp_name,
+                    'hours': work_hours,
+                    'date': entry.get('date_formatted', ''),
+                    'project': project_name
+                })
+            
+            total_hours += emp_total
+            
+            if emp_total > 0:
+                employee_stats.append({
+                    'name': emp_name,
+                    'hours': round(emp_total, 2),
+                    'entries': len(time_entries)
+                })
+        
+        # Wochentage formatieren
+        weekday_data = [
+            round(weekday_hours.get(0, 0), 1),  # Mo
+            round(weekday_hours.get(1, 0), 1),  # Di
+            round(weekday_hours.get(2, 0), 1),  # Mi
+            round(weekday_hours.get(3, 0), 1),  # Do
+            round(weekday_hours.get(4, 0), 1),  # Fr
+            round(weekday_hours.get(5, 0), 1),  # Sa
+            round(weekday_hours.get(6, 0), 1),  # So
+        ]
+        
+        # Trend-Daten: Bei einzelnem Monat -> Tage anzeigen, sonst -> Monate
+        trend_labels = []
+        trend_values = []
+        
+        german_months_short = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 
+                               'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
+        
+        if time_filter == 'month' or len(monthly_hours) == 1:
+            # Einzelner Monat: Zeige tägliche Daten
+            sorted_days = sorted(daily_hours.keys())
+            for day_key in sorted_days:
+                # Format: "01", "02", etc.
+                day_num = day_key.split('-')[2]
+                trend_labels.append(day_num)
+                trend_values.append(round(daily_hours[day_key], 1))
+        else:
+            # Mehrere Monate: Zeige monatliche Daten
+            sorted_months = sorted(monthly_hours.keys())
+            for month_key in sorted_months:
+                year, month = month_key.split('-')
+                month_idx = int(month) - 1
+                trend_labels.append(f"{german_months_short[month_idx]} {year[-2:]}")
+                trend_values.append(round(monthly_hours[month_key], 1))
+        
+        # Projekt-Verteilung berechnen
+        project_hours = defaultdict(float)
+        for entry in all_time_entries:
+            project_hours[entry.get('project', 'Sonstiges')] += entry.get('hours', 0)
+        
+        # Top 5 Projekte
+        sorted_projects = sorted(project_hours.items(), key=lambda x: x[1], reverse=True)[:5]
+        project_labels = [p[0] for p in sorted_projects]
+        project_values = [round(p[1], 1) for p in sorted_projects]
+        
+        # Mitarbeiter nach Stunden sortieren
+        employee_stats.sort(key=lambda x: x['hours'], reverse=True)
+        
+        return jsonify({
+            'status': 'success',
+            'filter': time_filter,
+            'filter_label': filter_label,
+            'date_from': date_from,
+            'date_to': date_to,
+            'kpi': {
+                'total_hours': round(total_hours, 1),
+                'employee_count': len(employee_stats),
+                'entry_count': len(all_time_entries),
+                'avg_hours_per_employee': round(total_hours / len(employee_stats), 1) if employee_stats else 0
+            },
+            'weekday_data': {
+                'labels': ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'],
+                'values': weekday_data
+            },
+            'monthly_data': {
+                'labels': trend_labels,
+                'values': trend_values
+            },
+            'project_data': {
+                'labels': project_labels,
+                'values': project_values
+            },
+            'employee_data': {
+                'labels': [e['name'].split()[0] + ' ' + e['name'].split()[-1][0] + '.' if ' ' in e['name'] else e['name'] for e in employee_stats],
+                'values': [e['hours'] for e in employee_stats],
+                'full_names': [e['name'] for e in employee_stats]
+            }
+        })
+        
+    except Exception as e:
+        print(f"Error in chart-stats: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
 
 
 @app.route('/api/send-custom-email', methods=['POST'])
