@@ -631,10 +631,11 @@ def send_custom_email():
         "employee_name": "Name",
         "date_from": "dd.mm.yyyy",
         "date_to": "dd.mm.yyyy", 
-        "email_to": "custom@email.com",       # Optional: benutzerdefinierte E-Mail
-        "email_subject": "Custom Subject",     # Optional: benutzerdefinierter Betreff
-        "attach_csv": true,                    # Optional: CSV anhängen (default: true)
-        "message": "Zusätzliche Nachricht"    # Optional: persönliche Nachricht
+        "email_to": "email1@example.com, email2@example.com",  # Mehrere mit Komma
+        "email_cc": "cc1@example.com, cc2@example.com",        # Optional: CC Empfänger
+        "email_subject": "Custom Subject",                      # Optional: benutzerdefinierter Betreff
+        "attach_csv": true,                                     # Optional: CSV anhängen (default: true)
+        "message": "Zusätzliche Nachricht"                     # Optional: persönliche Nachricht
     }
     """
     try:
@@ -665,6 +666,7 @@ def send_custom_email():
         # Optionale Felder
         employee_name = data.get('employee_name', 'Mitarbeiter')
         custom_email = data.get('email_to')
+        email_cc = data.get('email_cc', '')
         custom_subject = data.get('email_subject')
         attach_csv = data.get('attach_csv', True)
         custom_message = data.get('message', '')
@@ -680,7 +682,8 @@ def send_custom_email():
         print(f"=== CUSTOM EMAIL REQUEST ===")
         print(f"Employee: {employee_name} ({employee_id})")
         print(f"Period: {date_from} - {date_to}")
-        print(f"Custom Email: {custom_email}")
+        print(f"Custom Email (To): {custom_email}")
+        print(f"CC Recipients: {email_cc}")
         print(f"Custom Subject: {custom_subject}")
         print(f"Attach CSV: {attach_csv}")
         print(f"Custom Message: {custom_message}")
@@ -692,6 +695,7 @@ def send_custom_email():
             date_from=date_from,
             date_to=date_to,
             custom_email=custom_email,
+            email_cc=email_cc,
             custom_subject=custom_subject,
             attach_csv=attach_csv,
             custom_message=custom_message

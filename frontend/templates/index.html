@@ -20,7 +20,7 @@
             <div class="logo-section">
                 <img src="{{ url_for('static', filename='mctime_logo.png') }}" alt="McTime" class="logo">
             </div>
-            <div class="slogan">Einheitliche Daten. Einheitlicher Erfolg</div>
+            <div class="slogan">Daten, die Orientierung geben. Erfolg, der bleibt.</div>
         </div>
     </header>
 
@@ -55,6 +55,8 @@
                 </div>
             </div>
         </div>
+
+        <!-- Mitarbeiter Auswahl & Vorschau -->
 
         <!-- Content Grid -->
         <div class="content-grid">
@@ -118,7 +120,7 @@
                             </svg>
                             Mitarbeiter
                         </label>
-                        <div class="custom-select-wrapper" data-target="employee-select">
+                        <div class="custom-select-wrapper multi-select" data-target="employee-select">
                             <div class="custom-select-trigger">
                                 <span class="custom-select-value">Mitarbeiter wählen...</span>
                                 <svg class="custom-select-arrow" viewBox="0 0 24 24">
@@ -132,17 +134,25 @@
                                     </svg>
                                     <input type="text" placeholder="Suchen..." class="custom-select-search-input">
                                 </div>
-                                <div class="custom-select-options">
-                                    <div class="custom-select-option" data-value="">Mitarbeiter wählen...</div>
+                                <!-- Schnellauswahl Buttons -->
+                                <div class="select-actions" style="display: flex; gap: 8px; padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">
+                                    <button type="button" class="select-action-btn" onclick="selectAllEmployees()" style="flex: 1; padding: 6px 10px; font-size: 12px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                                        ✓ Alle auswählen
+                                    </button>
+                                    <button type="button" class="select-action-btn" onclick="clearEmployeeSelection()" style="flex: 1; padding: 6px 10px; font-size: 12px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                                        ✕ Auswahl leeren
+                                    </button>
+                                </div>
+                                <div class="custom-select-options" style="max-height: 250px; overflow-y: auto;">
                                     {% for employee in employees %}
-                                    <div class="custom-select-option" data-value="{{ employee.id if employee is mapping else employee }}">
-                                        {{ employee.name if employee is mapping else employee }}
+                                    <div class="custom-select-option multi-option" data-value="{{ employee.id if employee is mapping else employee }}" data-name="{{ employee.name if employee is mapping else employee }}">
+                                        <input type="checkbox" class="employee-checkbox" style="margin-right: 10px; pointer-events: none;">
+                                        <span>{{ employee.name if employee is mapping else employee }}</span>
                                     </div>
                                     {% endfor %}
                                 </div>
                             </div>
-                            <select id="employee-select" name="employee" class="hidden-select">
-                                <option value="">Mitarbeiter wählen...</option>
+                            <select id="employee-select" name="employee" class="hidden-select" multiple>
                                 {% for employee in employees %}
                                 <option value="{{ employee.id if employee is mapping else employee }}">
                                     {{ employee.name if employee is mapping else employee }}
@@ -150,6 +160,7 @@
                                 {% endfor %}
                             </select>
                         </div>
+                        <small id="selected-count" style="color: #6b7280; font-size: 12px; margin-top: 4px; display: block;">Keine Mitarbeiter ausgewählt</small>
                     </div>
                     
                     <!-- Zeitraum Von -->
@@ -238,8 +249,15 @@
                 <h2 class="card-title">Kontakt & Versand</h2>
                 <div class="email-form">
                     <div class="form-group">
-                        <label class="form-label" for="email-to">E-Mail-Adresse:</label>
-                        <input type="email" id="email-to" name="email_to" class="form-input" placeholder="empfaenger@email.de">
+                        <label class="form-label" for="email-to">Empfänger (An):</label>
+                        <input type="text" id="email-to" name="email_to" class="form-input" placeholder="email1@beispiel.de, email2@beispiel.de">
+                        <small style="color: #6b7280; font-size: 12px;">Mehrere Adressen mit Komma trennen</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="email-cc">CC (Kopie):</label>
+                        <input type="text" id="email-cc" name="email_cc" class="form-input" placeholder="kopie@beispiel.de, chef@firma.de">
+                        <small style="color: #6b7280; font-size: 12px;">Optional - Mehrere Adressen mit Komma trennen</small>
                     </div>
                     
                     <div class="form-group">
@@ -249,13 +267,13 @@
                     
                     <div class="form-group">
                         <label class="form-label" for="email-subject">Betreff:</label>
-                        <input type="text" id="email-subject" name="email_subject" class="form-input" placeholder="Wird nach Datenladen generiert..." readonly style="background: #f1f5f9; color: #374151;">
+                        <input type="text" id="email-subject" name="email_subject" class="form-input" placeholder="Wird nach Datenladen generiert..." readonly tabindex="-1" style="background: #f1f5f9; color: #374151;">
                         <small id="email-subject-hint" style="color: #6b7280; font-size: 12px;">Zeiterfassungsexport für [Mitarbeiter] [Zeitraum]</small>
                     </div>
                     
                     <div class="form-group">
                         <label class="form-label" for="email-message">Nachricht:</label>
-                        <textarea id="email-message" name="email_message" class="form-input" rows="4" readonly style="background: #f3f4f6;">Im Anhang befindet sich der Zeiterfassungsexport für den angegebenen Zeitraum.
+                        <textarea id="email-message" name="email_message" class="form-input" rows="4" readonly tabindex="-1" style="background: #f3f4f6;">Im Anhang befindet sich der Zeiterfassungsexport für den angegebenen Zeitraum.
 
 Bei Rückfragen stehe ich Ihnen gerne zur Verfügung.
 
@@ -279,17 +297,148 @@ Mit freundlichen Grüßen</textarea>
     </main>
 
     <script>
+        // Globale Variable für ausgewählte Mitarbeiter
+        let selectedEmployees = [];
+        let allEmployeesData = [];
+        
         // Lädt Daten beim Seitenaufruf
         document.addEventListener('DOMContentLoaded', function() {
             resetProgressbar();
             // Setze Standard-Datum auf diesen Monat
             setDateRange('month');
+            // Initialisiere Multi-Select für Mitarbeiter
+            initEmployeeMultiSelect();
         });
+        
+        // Multi-Select für Mitarbeiter initialisieren
+        function initEmployeeMultiSelect() {
+            const wrapper = document.querySelector('.multi-select[data-target="employee-select"]');
+            if (!wrapper) return;
+            const trigger = wrapper.querySelector('.custom-select-trigger');
+            const dropdown = wrapper.querySelector('.custom-select-dropdown');
+            const options = wrapper.querySelectorAll('.multi-option');
+            const searchInput = wrapper.querySelector('.custom-select-search-input');
+            allEmployeesData = [];
+            selectedEmployees = [];
+            // Alle Mitarbeiter-Daten sammeln
+            options.forEach(opt => {
+                allEmployeesData.push({
+                    id: opt.dataset.value,
+                    name: opt.dataset.name
+                });
+            });
+            // Toggle Dropdown
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                wrapper.classList.toggle('open');
+                if (wrapper.classList.contains('open') && searchInput) {
+                    setTimeout(() => searchInput.focus(), 50);
+                }
+                // Beim Öffnen: Auswahl synchronisieren
+                syncCheckboxesWithSelection();
+            });
+            // Option klicken = Toggle Checkbox
+            options.forEach(option => {
+                option.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const checkbox = option.querySelector('.employee-checkbox');
+                    const empId = option.dataset.value;
+                    const empName = option.dataset.name;
+                    checkbox.checked = !checkbox.checked;
+                    option.classList.toggle('selected', checkbox.checked);
+                    if (checkbox.checked) {
+                        if (!selectedEmployees.find(e => e.id === empId)) {
+                            selectedEmployees.push({ id: empId, name: empName });
+                        }
+                    } else {
+                        selectedEmployees = selectedEmployees.filter(e => e.id !== empId);
+                    }
+                    updateEmployeeDisplay();
+                    updateEmailSubjectPreview();
+                });
+            });
+            // Suche
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    const term = e.target.value.toLowerCase();
+                    options.forEach(opt => {
+                        const name = opt.dataset.name.toLowerCase();
+                        opt.style.display = name.includes(term) ? 'flex' : 'none';
+                    });
+                });
+                searchInput.addEventListener('click', e => e.stopPropagation());
+            }
+            // Außerhalb klicken schließt Dropdown
+            document.addEventListener('click', () => {
+                wrapper.classList.remove('open');
+            });
+            // Dropdown selbst nicht schließen beim Klick
+            dropdown.addEventListener('click', e => e.stopPropagation());
+        }
+
+        // Synchronisiert die Checkboxen im Dropdown mit der aktuellen Auswahl
+        function syncCheckboxesWithSelection() {
+            const wrapper = document.querySelector('.multi-select[data-target="employee-select"]');
+            const options = wrapper.querySelectorAll('.multi-option');
+            options.forEach(opt => {
+                const checkbox = opt.querySelector('.employee-checkbox');
+                const empId = opt.dataset.value;
+                const isSelected = selectedEmployees.some(e => e.id === empId);
+                checkbox.checked = isSelected;
+                opt.classList.toggle('selected', isSelected);
+            });
+        }
+        
+        // Alle Mitarbeiter auswählen
+        function selectAllEmployees() {
+            selectedEmployees = [...allEmployeesData];
+            syncCheckboxesWithSelection();
+            updateEmployeeDisplay();
+            updateEmailSubjectPreview();
+        }
+        
+        // Auswahl leeren
+        function clearEmployeeSelection() {
+            selectedEmployees = [];
+            syncCheckboxesWithSelection();
+            updateEmployeeDisplay();
+            updateEmailSubjectPreview();
+        }
+        
+        // Anzeige aktualisieren
+        function updateEmployeeDisplay() {
+            const valueSpan = document.querySelector('.multi-select .custom-select-value');
+            const countSpan = document.getElementById('selected-count');
+            const count = selectedEmployees.length;
+            const total = allEmployeesData.length;
+            
+            if (count === 0) {
+                valueSpan.textContent = 'Mitarbeiter wählen...';
+                countSpan.textContent = 'Keine Mitarbeiter ausgewählt';
+                countSpan.style.color = '#6b7280';
+            } else if (count === 1) {
+                valueSpan.textContent = selectedEmployees[0].name;
+                countSpan.textContent = '1 Mitarbeiter ausgewählt';
+                countSpan.style.color = '#10b981';
+            } else if (count === total) {
+                valueSpan.textContent = `Alle Mitarbeiter (${count})`;
+                countSpan.textContent = `Alle ${count} Mitarbeiter ausgewählt`;
+                countSpan.style.color = '#3b82f6';
+            } else {
+                valueSpan.textContent = `${count} Mitarbeiter ausgewählt`;
+                countSpan.textContent = `${count} von ${total} Mitarbeitern ausgewählt`;
+                countSpan.style.color = '#10b981';
+            }
+            
+            // Hidden select aktualisieren
+            const hiddenSelect = document.getElementById('employee-select');
+            Array.from(hiddenSelect.options).forEach(opt => {
+                opt.selected = selectedEmployees.some(e => e.id === opt.value);
+            });
+        }
         
         // Funktion zum Aktualisieren des Betreff-Vorschau
         function updateEmailSubjectPreview() {
-            const employeeSelect = document.getElementById('employee-select');
-            const employeeName = employeeSelect.selectedOptions[0]?.text || '';
             const dateFrom = document.getElementById('date-from').value;
             const dateTo = document.getElementById('date-to').value;
             
@@ -300,10 +449,24 @@ Mit freundlichen Grüßen</textarea>
                 return `${day}.${month}.${year}`;
             };
             
-            if (employeeName && employeeName !== 'Mitarbeiter wählen...' && dateFrom && dateTo) {
-                const subject = `Zeiterfassungsexport für ${employeeName} (${formatDateForDisplay(dateFrom)} - ${formatDateForDisplay(dateTo)})`;
-                const subjectField = document.getElementById('email-subject');
-                const hintField = document.getElementById('email-subject-hint');
+            const subjectField = document.getElementById('email-subject');
+            const hintField = document.getElementById('email-subject-hint');
+            const count = selectedEmployees.length;
+            const total = allEmployeesData.length;
+            
+            if (count > 0 && dateFrom && dateTo) {
+                let subject;
+                
+                if (count === 1) {
+                    // Ein Mitarbeiter
+                    subject = `Zeiterfassungsexport für ${selectedEmployees[0].name} (${formatDateForDisplay(dateFrom)} - ${formatDateForDisplay(dateTo)})`;
+                } else if (count === total) {
+                    // Alle Mitarbeiter
+                    subject = `Zeiterfassungsexport für alle Mitarbeiter (${formatDateForDisplay(dateFrom)} - ${formatDateForDisplay(dateTo)})`;
+                } else {
+                    // Mehrere (aber nicht alle)
+                    subject = `Zeiterfassungsexport für ${count} ausgewählte Mitarbeiter (${formatDateForDisplay(dateFrom)} - ${formatDateForDisplay(dateTo)})`;
+                }
                 
                 subjectField.value = subject;
                 subjectField.style.background = '#ecfdf5';
@@ -431,13 +594,12 @@ Mit freundlichen Grüßen</textarea>
 
         function filterData() {
             const company = document.getElementById('company-select').value;
-            const employee = document.getElementById('employee-select').value;
             const dateFrom = document.getElementById('date-from').value;
             const dateTo = document.getElementById('date-to').value;
             
-            // Validate required fields
-            if (!employee || !dateFrom || !dateTo) {
-                alert('Bitte wählen Sie einen Mitarbeiter und geben Sie ein Datum von/bis an.');
+            // Validate required fields - jetzt mit selectedEmployees Array
+            if (selectedEmployees.length === 0 || !dateFrom || !dateTo) {
+                alert('Bitte wählen Sie mindestens einen Mitarbeiter und geben Sie ein Datum von/bis an.');
                 errorLoadingAnimation();
                 return;
             }
@@ -459,40 +621,56 @@ Mit freundlichen Grüßen</textarea>
                 return `${day}.${month}.${year}`;
             };
             
-            // Prepare data for middleware API
-            const formData = {
-                firma: company,
-                mitarbeiter: employee,
-                von: formatDateForAPI(dateFrom),
-                bis: formatDateForAPI(dateTo)
-            };
+            // Mehrere Mitarbeiter laden
+            const allTimeEntries = [];
+            let completedRequests = 0;
+            const totalRequests = selectedEmployees.length;
             
-            console.log('=== SENDING TO MIDDLEWARE ===');
-            console.log('Form Data:', formData);
+            console.log(`=== LOADING DATA FOR ${totalRequests} EMPLOYEES ===`);
             
-            // Call middleware API
-            fetch('/api/load-data', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(formData)
-            })
-                .then(response => {
-                    console.log('API Response Status:', response.status);
-                    return response.json();
+            // Für jeden ausgewählten Mitarbeiter Daten laden
+            const loadPromises = selectedEmployees.map(emp => {
+                const formData = {
+                    firma: company,
+                    mitarbeiter: emp.id,
+                    von: formatDateForAPI(dateFrom),
+                    bis: formatDateForAPI(dateTo)
+                };
+                
+                return fetch('/api/load-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
                 })
+                .then(response => response.json())
                 .then(result => {
-                    console.log('API Response Data:', result);
-                    
                     if (result.status === 'success' && result.data && result.data.timeEntries) {
-                        updateTable(result.data.timeEntries);
-                        completeLoadingAnimation(result.data.timeEntries.length || 0);
-                        
-                        // Automatisch Betreff generieren und anzeigen
+                        // Name zum Eintrag hinzufügen
+                        result.data.timeEntries.forEach(entry => {
+                            entry.name = emp.name;
+                        });
+                        return result.data.timeEntries;
+                    }
+                    return [];
+                })
+                .catch(error => {
+                    console.error(`Error loading data for ${emp.name}:`, error);
+                    return [];
+                });
+            });
+            
+            // Alle Anfragen abwarten
+            Promise.all(loadPromises)
+                .then(results => {
+                    // Alle Ergebnisse zusammenführen
+                    const allEntries = results.flat();
+                    console.log(`Total entries loaded: ${allEntries.length}`);
+                    
+                    if (allEntries.length > 0) {
+                        updateTable(allEntries);
+                        completeLoadingAnimation(allEntries.length);
                         updateEmailSubjectPreview();
                     } else {
-                        console.error('API Error:', result.message);
                         updateTable([]);
                         errorLoadingAnimation();
                     }
@@ -504,9 +682,14 @@ Mit freundlichen Grüßen</textarea>
                 })
                 .finally(() => {
                     // Button wieder aktivieren
-                    if (loadButton && loadButton.textContent.includes('Lädt')) {
+                    if (loadButton) {
                         loadButton.disabled = false;
-                        loadButton.innerHTML = 'Daten laden';
+                        loadButton.innerHTML = `
+                            <svg viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                <path fill="currentColor" d="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z"/>
+                            </svg>
+                            Daten laden
+                        `;
                     }
                 });
         }
@@ -592,25 +775,24 @@ Mit freundlichen Grüßen</textarea>
 
         // E-Mail-Versand Funktion
         function sendEmail() {
-            const employee = document.getElementById('employee-select').value;
             const dateFrom = document.getElementById('date-from').value;
             const dateTo = document.getElementById('date-to').value;
-            const employeeName = document.getElementById('employee-select').selectedOptions[0]?.text || '';
             
-            // Neue Felder
+            // E-Mail Felder
             const emailTo = document.getElementById('email-to').value;
+            const emailCc = document.getElementById('email-cc').value;
             const emailAnrede = document.getElementById('email-anrede').value;
             const emailSubjectField = document.getElementById('email-subject');
             const emailMessage = document.getElementById('email-message').value;
             const attachCsv = document.getElementById('attach-csv').checked;
             
-            if (!employee || !dateFrom || !dateTo) {
+            if (selectedEmployees.length === 0 || !dateFrom || !dateTo) {
                 alert('Bitte wählen Sie zuerst Mitarbeiter und Zeitraum aus.');
                 return;
             }
             
             if (!emailTo) {
-                alert('Bitte geben Sie eine E-Mail-Adresse ein.');
+                alert('Bitte geben Sie mindestens eine Empfänger E-Mail-Adresse ein.');
                 return;
             }
             
@@ -626,11 +808,8 @@ Mit freundlichen Grüßen</textarea>
                 return `${day}.${month}.${year}`;
             };
             
-            // Betreff aus dem Feld nehmen (bereits generiert) oder neu generieren
+            // Betreff aus dem Feld nehmen (bereits generiert)
             let emailSubject = emailSubjectField.value;
-            if (!emailSubject) {
-                emailSubject = `Zeiterfassungsexport für ${employeeName} (${formatDateForAPI(dateFrom)} - ${formatDateForAPI(dateTo)})`;
-            }
             
             // Vollständige Nachricht mit Anrede
             const fullMessage = `${emailAnrede}\n\n${emailMessage}`;
@@ -643,13 +822,32 @@ Mit freundlichen Grüßen</textarea>
                 btn.textContent = 'Sende...';
             }
             
-            // Send email via API with new fields
+            // Bestimme employee_id und employee_name basierend auf Auswahl
+            let employeeIds, employeeNames;
+            const count = selectedEmployees.length;
+            const total = allEmployeesData.length;
+            
+            if (count === 1) {
+                employeeIds = selectedEmployees[0].id;
+                employeeNames = selectedEmployees[0].name;
+            } else if (count === total) {
+                employeeIds = selectedEmployees.map(e => e.id).join(',');
+                employeeNames = 'Alle Mitarbeiter';
+            } else {
+                employeeIds = selectedEmployees.map(e => e.id).join(',');
+                employeeNames = `${count} ausgewählte Mitarbeiter`;
+            }
+            
+            // Send email via API with new fields (inkl. CC)
             const payload = {
-                employee_id: employee,
-                employee_name: employeeName,
+                employee_id: employeeIds,
+                employee_name: employeeNames,
+                employee_ids: selectedEmployees.map(e => e.id),
+                employee_names: selectedEmployees.map(e => e.name),
                 date_from: formatDateForAPI(dateFrom),
                 date_to: formatDateForAPI(dateTo),
                 email_to: emailTo,
+                email_cc: emailCc || '',
                 email_subject: emailSubject,
                 message: fullMessage,
                 attach_csv: attachCsv
@@ -697,7 +895,7 @@ Mit freundlichen Grüßen</textarea>
                     </svg>
                     <span>McTime Data Bridge</span>
                 </div>
-                <p class="footer-tagline">Einheitliche Daten. Einheitlicher Erfolg.</p>
+                <p class="footer-tagline">Daten, die Orientierung geben. Erfolg, der bleibt.</p>
             </div>
             
             <div class="footer-links">
@@ -1024,5 +1222,85 @@ Mit freundlichen Grüßen</textarea>
             to { transform: rotate(360deg); }
         }
     </style>
+</script>
+<script>
+// --- Mitarbeiter-Checkboxen, Tabs und CSV-Export ---
+document.addEventListener('DOMContentLoaded', function() {
+    // Mitarbeiter aus Jinja-Template holen
+    const employees = [
+        {% for employee in employees %}
+            { id: "{{ employee.id if employee is mapping else employee }}", name: "{{ employee.name if employee is mapping else employee }}" },
+        {% endfor %}
+    ];
+    const employeeCheckboxes = document.getElementById('employee-checkboxes');
+    const selectAllBox = document.getElementById('selectAllEmployees');
+    const tabsDiv = document.getElementById('employee-tabs');
+    const exportBtn = document.getElementById('exportCsvBtn');
+
+    // Checkboxen rendern
+    function renderCheckboxes() {
+        employeeCheckboxes.innerHTML = employees.map(emp =>
+            `<label style='margin-right:12px;'><input type='checkbox' class='empbox' value='${emp.id}'> ${emp.name}</label>`
+        ).join('');
+    }
+    renderCheckboxes();
+
+    // Auswahl-Logik
+    function getSelectedEmployees() {
+        return employees.filter(emp =>
+            document.querySelector(`.empbox[value='${emp.id}']`)?.checked
+        );
+    }
+
+    function updateTabs() {
+        const selected = getSelectedEmployees();
+        if (selected.length === 0) {
+            tabsDiv.innerHTML = '<span style="color:#888;">Keine Auswahl</span>';
+            exportBtn.style.display = 'none';
+        } else {
+            tabsDiv.innerHTML = selected.map(emp =>
+                `<span style='padding:6px 14px;margin-right:8px;background:#3b82f6;color:#fff;border-radius:8px;'>${emp.name}</span>`
+            ).join('');
+            exportBtn.style.display = 'inline-block';
+        }
+        // Betreff automatisch setzen
+        const subjectInput = document.getElementById('email-subject');
+        if(subjectInput) {
+            if(selected.length === 1) {
+                subjectInput.value = `Zeiterfassungsexport für ${selected[0].name}`;
+            } else if(selected.length > 1) {
+                subjectInput.value = `Zeiterfassungsexport für ${selected.length} Mitarbeiter`;
+            } else {
+                subjectInput.value = '';
+            }
+        }
+    }
+
+    // Checkbox-Events
+    employeeCheckboxes.addEventListener('change', function(e) {
+        if(e.target.classList.contains('empbox')) {
+            updateTabs();
+            // "Alle auswählen" synchronisieren
+            const allChecked = employees.every(emp => document.querySelector(`.empbox[value='${emp.id}']`).checked);
+            selectAllBox.checked = allChecked;
+        }
+    });
+    selectAllBox.addEventListener('change', function() {
+        document.querySelectorAll('.empbox').forEach(cb => cb.checked = selectAllBox.checked);
+        updateTabs();
+    });
+
+    // Initial Tabs
+    updateTabs();
+
+    // CSV-Export-Button
+    exportBtn.addEventListener('click', function() {
+        const selected = getSelectedEmployees();
+        if(selected.length === 0) return;
+        // Beispiel: CSV-Export Dummy (hier Backend-Route anpassen!)
+        const ids = selected.map(e => e.id).join(',');
+        window.location.href = `/download_csv?employee_ids=${encodeURIComponent(ids)}`;
+    });
+});
 </body>
 </html>

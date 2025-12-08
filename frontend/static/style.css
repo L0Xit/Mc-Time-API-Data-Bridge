@@ -1,3 +1,61 @@
+/* Mitarbeiter-Auswahl Home-Übersicht */
+#employee-select-area {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+#employee-select-area label {
+    font-size: 15px;
+    color: #374151;
+    background: #f1f5f9;
+    border-radius: 6px;
+    padding: 6px 12px;
+    margin-bottom: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+#employee-select-area label:hover {
+    background: #e0e7ef;
+}
+#employee-select-area input[type="checkbox"] {
+    accent-color: #3b82f6;
+    margin-right: 6px;
+    transform: scale(1.15);
+}
+#employee-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    min-height: 32px;
+}
+#employee-tabs span {
+    background: #3b82f6;
+    color: #fff;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(59,130,246,0.08);
+    letter-spacing: 0.2px;
+}
+#exportCsvBtn {
+    background: #10b981;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 20px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(16,185,129,0.08);
+    transition: background 0.2s;
+}
+#exportCsvBtn:hover {
+    background: #059669;
+}
 /* Modern Reset and Base Styles */
 * {
     margin: 0;
@@ -604,13 +662,30 @@ body {
     color: #3b82f6;
 }
 
-.custom-select-option.selected::before {
-    content: '';
-    width: 6px;
-    height: 6px;
-    background: #3b82f6;
-    border-radius: 50%;
-    margin-right: 10px;
+/* Multi-Select Checkbox Styles */
+.multi-option {
+    display: flex;
+    align-items: center;
+}
+
+.multi-option .employee-checkbox {
+    width: 18px;
+    height: 18px;
+    accent-color: #3b82f6;
+}
+
+.multi-option.selected {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.multi-option.selected .employee-checkbox {
+    accent-color: #10b981;
+}
+
+.select-action-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
 }
 
 /* Date Input Icon */

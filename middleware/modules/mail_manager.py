@@ -117,6 +117,7 @@ class MailManager:
             to_email=employee_email,
             subject=subject,
             html_body=html_body,
+            cc_email=None,
             csv_content=csv_content,
             csv_filename=f"zeiterfassung_{employee_name}_{date_from}_{date_to}.csv"
         )
@@ -261,6 +262,7 @@ class MailManager:
         to_email: str,
         subject: str,
         html_body: str,
+        cc_email: str = None,
         csv_content: str = None,
         csv_filename: str = None
     ) -> bool:
@@ -268,9 +270,12 @@ class MailManager:
         Sendet E-Mail via SMTP
         
         Args:
-            to_email: Empfänger-Adresse
+            to_email: Empfänger-Adresse(n), Komma-getrennt für mehrere
             subject: Betreff
             html_body: HTML-Inhalt
+            cc_email: CC-Empfänger-Adresse(n), Komma-getrennt für mehrere
+            csv_content: CSV-Inhalt als String
+            csv_filename: Dateiname für CSV-Anhang
             
         Returns:
             True bei Erfolg
@@ -285,13 +290,25 @@ class MailManager:
             print(f"SMTP Server: {self.smtp_server}:{self.smtp_port}")
             print(f"Von: {self.sender_email}")
             print(f"An: {to_email}")
+            print(f"CC: {cc_email if cc_email else 'Keine'}")
             print(f"Betreff: {subject}")
+            
+            # Parse Empfänger-Adressen (mehrere mit Komma getrennt)
+            to_list = [email.strip() for email in to_email.split(',') if email.strip()]
+            cc_list = [email.strip() for email in cc_email.split(',') if email.strip()] if cc_email else []
             
             # Erstelle Nachricht
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
             msg["From"] = self.sender_email
-            msg["To"] = to_email
+            msg["To"] = ", ".join(to_list)
+            
+            # CC hinzufügen falls vorhanden
+            if cc_list:
+                msg["Cc"] = ", ".join(cc_list)
+            
+            # Alle Empfänger für send_message (To + CC)
+            all_recipients = to_list + cc_list
             
             # Füge HTML hinzu
             html_part = MIMEText(html_body, "html", "utf-8")
@@ -323,10 +340,10 @@ class MailManager:
             server.login(self.smtp_username, self.smtp_password)
             
             print("Sende E-Mail...")
-            server.send_message(msg)
+            server.sendmail(self.sender_email, all_recipients, msg.as_string())
             server.quit()
             
-            print("✅ E-Mail erfolgreich gesendet!")
+            print(f"✅ E-Mail erfolgreich gesendet an {len(to_list)} Empfänger" + (f" (+ {len(cc_list)} CC)" if cc_list else ""))
             return True
             
         except smtplib.SMTPAuthenticationError as e:

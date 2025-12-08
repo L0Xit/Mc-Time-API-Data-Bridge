@@ -326,6 +326,7 @@ class Middleware:
         date_from: str,
         date_to: str,
         custom_email: str = None,
+        email_cc: str = None,
         custom_subject: str = None,
         attach_csv: bool = True,
         custom_message: str = None
@@ -338,7 +339,8 @@ class Middleware:
             employee_name: Name des Mitarbeiters
             date_from: Startdatum
             date_to: Enddatum
-            custom_email: Benutzerdefinierte E-Mail-Adresse
+            custom_email: Benutzerdefinierte E-Mail-Adresse(n), Komma-getrennt
+            email_cc: CC E-Mail-Adresse(n), Komma-getrennt
             custom_subject: Benutzerdefinierter Betreff
             attach_csv: CSV anhängen
             custom_message: Benutzerdefinierte Nachricht
@@ -411,6 +413,7 @@ class Middleware:
             # Sende E-Mail
             success = self.mail._send_email(
                 to_email=to_email,
+                cc_email=email_cc,
                 subject=subject,
                 html_body=html_body,
                 csv_content=csv_content,

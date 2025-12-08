@@ -481,7 +481,7 @@
             <div class="logo-section">
                 <img src="{{ url_for('static', filename='mctime_logo.png') }}" alt="McTime" class="logo">
             </div>
-            <div class="slogan">Einheitliche Daten. Einheitlicher Erfolg</div>
+            <div class="slogan">Daten, die Orientierung geben. Erfolg, der bleibt.</div>
         </div>
     </header>
 
@@ -560,8 +560,8 @@
                         <span class="stat-label">Hauptsitz</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number">DACH</span>
-                        <span class="stat-label">Region</span>
+                        <span class="stat-number">🌍</span>
+                        <span class="stat-label">Weltweit</span>
                     </div>
                 </div>
             </div>
@@ -679,6 +679,23 @@
 
         <!-- Charts Grid -->
         <div class="charts-grid">
+            <!-- Mitarbeiter Auswahl -->
+            <div class="chart-card full-width" style="margin-bottom: 24px;">
+                <div class="chart-header">
+                    <div class="chart-title">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M16,11C16,13.21 14.21,15 12,15C9.79,15 8,13.21 8,11C8,8.79 9.79,7 12,7C14.21,7 16,8.79 16,11M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/>
+                        </svg>
+                        Mitarbeiter auswählen
+                    </div>
+                </div>
+                <div id="employee-select-area">
+                    <label><input type="checkbox" id="selectAllEmployees"> <b>Alle auswählen</b></label>
+                    <span id="employee-checkboxes"></span>
+                </div>
+                <div id="employee-tabs" style="margin-top: 16px;"></div>
+            </div>
+
             <!-- Arbeitszeiten Chart -->
             <div class="chart-card">
                 <div class="chart-header">
@@ -756,7 +773,7 @@
                     </svg>
                     <span>McTime Data Bridge</span>
                 </div>
-                <p class="footer-tagline">Einheitliche Daten. Einheitlicher Erfolg.</p>
+                <p class="footer-tagline">Daten, die Orientierung geben. Erfolg, der bleibt.</p>
             </div>
             
             <div class="footer-links">
