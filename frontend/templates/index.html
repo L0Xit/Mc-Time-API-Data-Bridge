@@ -118,11 +118,13 @@
                             <svg viewBox="0 0 24 24" style="width: 16px; height: 16px;">
                                 <path fill="currentColor" d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/>
                             </svg>
-                            Mitarbeiter
+                            Mitarbeiter (durchsuchbar)
                         </label>
                         <div class="custom-select-wrapper multi-select" data-target="employee-select">
                             <div class="custom-select-trigger">
-                                <span class="custom-select-value">Mitarbeiter wählen...</span>
+                                <div class="chip-container" id="employee-chips">
+                                    <span class="chip-placeholder">Mitarbeiter wählen...</span>
+                                </div>
                                 <svg class="custom-select-arrow" viewBox="0 0 24 24">
                                     <path fill="currentColor" d="M7,10L12,15L17,10H7Z"/>
                                 </svg>
@@ -134,7 +136,6 @@
                                     </svg>
                                     <input type="text" placeholder="Suchen..." class="custom-select-search-input">
                                 </div>
-                                <!-- Schnellauswahl Buttons -->
                                 <div class="select-actions" style="display: flex; gap: 8px; padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">
                                     <button type="button" class="select-action-btn" onclick="selectAllEmployees()" style="flex: 1; padding: 6px 10px; font-size: 12px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">
                                         ✓ Alle auswählen
@@ -146,7 +147,7 @@
                                 <div class="custom-select-options" style="max-height: 250px; overflow-y: auto;">
                                     {% for employee in employees %}
                                     <div class="custom-select-option multi-option" data-value="{{ employee.id if employee is mapping else employee }}" data-name="{{ employee.name if employee is mapping else employee }}">
-                                        <input type="checkbox" class="employee-checkbox" style="margin-right: 10px; pointer-events: none;">
+                                        <input type="checkbox" class="employee-checkbox" style="margin-right: 10px;">
                                         <span>{{ employee.name if employee is mapping else employee }}</span>
                                     </div>
                                     {% endfor %}
@@ -219,6 +220,14 @@
                         <span class="status-indicator {{ 'connected' if db_status else 'disconnected' }}">
                             {{ 'Verbunden' if db_status else 'Getrennt' }}
                         </span>
+                    </div>
+                    <div class="person-tabs-wrapper">
+                        <div class="person-tabs" id="person-tabs"></div>
+                        <div class="shared-filter-note">Gemeinsame Filter werden für alle ausgewählten Personen angewendet.</div>
+                    </div>
+                    <div class="active-person-bar">
+                        <div id="active-person-label">Keine Person ausgewählt</div>
+                        <div class="active-person-hint">Tab klicken, um zwischen Personen zu wechseln</div>
                     </div>
                     <div style="overflow-x: auto;">
                     <table class="data-table" id="data-table">
@@ -297,9 +306,11 @@ Mit freundlichen Grüßen</textarea>
     </main>
 
     <script>
-        // Globale Variable für ausgewählte Mitarbeiter
+        // Globale States für Multi-Personen-Ansicht
         let selectedEmployees = [];
         let allEmployeesData = [];
+        let personDataById = {};
+        let activePersonId = null;
         
         // Lädt Daten beim Seitenaufruf
         document.addEventListener('DOMContentLoaded', function() {
@@ -308,6 +319,8 @@ Mit freundlichen Grüßen</textarea>
             setDateRange('month');
             // Initialisiere Multi-Select für Mitarbeiter
             initEmployeeMultiSelect();
+            renderPersonTabs();
+            renderActivePersonTable([]);
         });
         
         // Multi-Select für Mitarbeiter initialisieren
@@ -339,14 +352,13 @@ Mit freundlichen Grüßen</textarea>
             });
             // Option klicken = Toggle Checkbox
             options.forEach(option => {
-                option.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const checkbox = option.querySelector('.employee-checkbox');
-                    const empId = option.dataset.value;
-                    const empName = option.dataset.name;
-                    checkbox.checked = !checkbox.checked;
-                    option.classList.toggle('selected', checkbox.checked);
-                    if (checkbox.checked) {
+                const checkbox = option.querySelector('.employee-checkbox');
+                const empId = option.dataset.value;
+                const empName = option.dataset.name;
+
+                const toggleSelection = (checked) => {
+                    option.classList.toggle('selected', checked);
+                    if (checked) {
                         if (!selectedEmployees.find(e => e.id === empId)) {
                             selectedEmployees.push({ id: empId, name: empName });
                         }
@@ -355,6 +367,17 @@ Mit freundlichen Grüßen</textarea>
                     }
                     updateEmployeeDisplay();
                     updateEmailSubjectPreview();
+                };
+
+                option.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    checkbox.checked = !checkbox.checked;
+                    toggleSelection(checkbox.checked);
+                });
+
+                checkbox.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleSelection(checkbox.checked);
                 });
             });
             // Suche
@@ -387,6 +410,7 @@ Mit freundlichen Grüßen</textarea>
                 checkbox.checked = isSelected;
                 opt.classList.toggle('selected', isSelected);
             });
+            syncHiddenSelect();
         }
         
         // Alle Mitarbeiter auswählen
@@ -395,6 +419,7 @@ Mit freundlichen Grüßen</textarea>
             syncCheckboxesWithSelection();
             updateEmployeeDisplay();
             updateEmailSubjectPreview();
+            syncHiddenSelect();
         }
         
         // Auswahl leeren
@@ -403,6 +428,32 @@ Mit freundlichen Grüßen</textarea>
             syncCheckboxesWithSelection();
             updateEmployeeDisplay();
             updateEmailSubjectPreview();
+            syncPersonDataWithSelection();
+            renderPersonTabs();
+            renderActivePersonTable([]);
+        }
+
+        function syncSelectionFromDOM() {
+            const wrapper = document.querySelector('.multi-select[data-target="employee-select"]');
+            if (!wrapper) return;
+            const checkedBoxes = wrapper.querySelectorAll('.employee-checkbox:checked');
+            const fromChecks = Array.from(checkedBoxes).map(cb => {
+                const opt = cb.closest('.multi-option');
+                return { id: opt.dataset.value, name: opt.dataset.name };
+            });
+            if (fromChecks.length > 0) {
+                selectedEmployees = fromChecks;
+            }
+            syncHiddenSelect();
+        }
+
+        function syncHiddenSelect() {
+            const hiddenSelect = document.getElementById('employee-select');
+            if (hiddenSelect) {
+                Array.from(hiddenSelect.options).forEach(opt => {
+                    opt.selected = selectedEmployees.some(e => e.id === opt.value);
+                });
+            }
         }
         
         // Anzeige aktualisieren
@@ -411,30 +462,80 @@ Mit freundlichen Grüßen</textarea>
             const countSpan = document.getElementById('selected-count');
             const count = selectedEmployees.length;
             const total = allEmployeesData.length;
+            const chipContainer = document.getElementById('employee-chips');
+            if (chipContainer) {
+                chipContainer.innerHTML = '';
+            }
             
             if (count === 0) {
-                valueSpan.textContent = 'Mitarbeiter wählen...';
+                if (valueSpan) {
+                    valueSpan.textContent = 'Mitarbeiter wählen...';
+                }
+                if (chipContainer) {
+                    chipContainer.innerHTML = '<span class="chip-placeholder">Mitarbeiter wählen...</span>';
+                }
                 countSpan.textContent = 'Keine Mitarbeiter ausgewählt';
                 countSpan.style.color = '#6b7280';
             } else if (count === 1) {
-                valueSpan.textContent = selectedEmployees[0].name;
+                if (valueSpan) {
+                    valueSpan.textContent = selectedEmployees[0].name;
+                }
+                if (chipContainer) {
+                    chipContainer.appendChild(createChip(selectedEmployees[0]));
+                }
                 countSpan.textContent = '1 Mitarbeiter ausgewählt';
                 countSpan.style.color = '#10b981';
             } else if (count === total) {
-                valueSpan.textContent = `Alle Mitarbeiter (${count})`;
+                if (valueSpan) {
+                    valueSpan.textContent = `Alle Mitarbeiter (${count})`;
+                }
+                if (chipContainer) {
+                    chipContainer.appendChild(createChip({ name: `Alle ${count} Mitarbeiter`, id: 'all' }, true));
+                }
                 countSpan.textContent = `Alle ${count} Mitarbeiter ausgewählt`;
                 countSpan.style.color = '#3b82f6';
             } else {
-                valueSpan.textContent = `${count} Mitarbeiter ausgewählt`;
+                if (valueSpan) {
+                    valueSpan.textContent = `${count} Mitarbeiter ausgewählt`;
+                }
+                if (chipContainer) {
+                    selectedEmployees.slice(0, 4).forEach(emp => chipContainer.appendChild(createChip(emp)));
+                    if (selectedEmployees.length > 4) {
+                        const more = document.createElement('span');
+                        more.className = 'chip-placeholder';
+                        more.textContent = `+${selectedEmployees.length - 4} mehr`;
+                        chipContainer.appendChild(more);
+                    }
+                }
                 countSpan.textContent = `${count} von ${total} Mitarbeitern ausgewählt`;
                 countSpan.style.color = '#10b981';
             }
             
             // Hidden select aktualisieren
-            const hiddenSelect = document.getElementById('employee-select');
-            Array.from(hiddenSelect.options).forEach(opt => {
-                opt.selected = selectedEmployees.some(e => e.id === opt.value);
-            });
+            syncHiddenSelect();
+
+            // Tabs und Tabelle an Auswahl koppeln
+            updateSelectionDependentUI();
+        }
+
+        function createChip(emp, isAggregate = false) {
+            const chip = document.createElement('span');
+            chip.className = 'chip';
+            chip.textContent = emp.name;
+            if (!isAggregate) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = '×';
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectedEmployees = selectedEmployees.filter(x => x.id !== emp.id);
+                    updateEmployeeDisplay();
+                    updateSelectionDependentUI();
+                    syncCheckboxesWithSelection();
+                });
+                chip.appendChild(btn);
+            }
+            return chip;
         }
         
         // Funktion zum Aktualisieren des Betreff-Vorschau
@@ -477,6 +578,25 @@ Mit freundlichen Grüßen</textarea>
                     hintField.style.color = '#10b981';
                 }
             }
+        }
+
+        function syncPersonDataWithSelection() {
+            const allowedIds = selectedEmployees.map(e => e.id);
+            Object.keys(personDataById).forEach(id => {
+                if (!allowedIds.includes(id)) {
+                    delete personDataById[id];
+                }
+            });
+
+            if (!allowedIds.includes(activePersonId)) {
+                activePersonId = allowedIds[0] || null;
+            }
+        }
+
+        function updateSelectionDependentUI() {
+            syncPersonDataWithSelection();
+            renderPersonTabs();
+            renderActivePersonTable();
         }
         
         // Schnellauswahl für Zeitraum
@@ -530,7 +650,9 @@ Mit freundlichen Grüßen</textarea>
             document.getElementById('date-to').value = formatDate(toDate);
             
             // Aktiviere den geklickten Button
-            event.target.classList.add('active');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
         }
         
         // Progressbar-Animationsfunktionen
@@ -593,9 +715,11 @@ Mit freundlichen Grüßen</textarea>
         }
 
         function filterData() {
+            syncSelectionFromDOM();
             const company = document.getElementById('company-select').value;
             const dateFrom = document.getElementById('date-from').value;
             const dateTo = document.getElementById('date-to').value;
+            const selectionSnapshot = [...selectedEmployees];
             
             // Validate required fields - jetzt mit selectedEmployees Array
             if (selectedEmployees.length === 0 || !dateFrom || !dateTo) {
@@ -621,15 +745,7 @@ Mit freundlichen Grüßen</textarea>
                 return `${day}.${month}.${year}`;
             };
             
-            // Mehrere Mitarbeiter laden
-            const allTimeEntries = [];
-            let completedRequests = 0;
-            const totalRequests = selectedEmployees.length;
-            
-            console.log(`=== LOADING DATA FOR ${totalRequests} EMPLOYEES ===`);
-            
-            // Für jeden ausgewählten Mitarbeiter Daten laden
-            const loadPromises = selectedEmployees.map(emp => {
+            const loadPromises = selectionSnapshot.map(emp => {
                 const formData = {
                     firma: company,
                     mitarbeiter: emp.id,
@@ -645,7 +761,6 @@ Mit freundlichen Grüßen</textarea>
                 .then(response => response.json())
                 .then(result => {
                     if (result.status === 'success' && result.data && result.data.timeEntries) {
-                        // Name zum Eintrag hinzufügen
                         result.data.timeEntries.forEach(entry => {
                             entry.name = emp.name;
                         });
@@ -659,29 +774,41 @@ Mit freundlichen Grüßen</textarea>
                 });
             });
             
-            // Alle Anfragen abwarten
             Promise.all(loadPromises)
                 .then(results => {
-                    // Alle Ergebnisse zusammenführen
-                    const allEntries = results.flat();
-                    console.log(`Total entries loaded: ${allEntries.length}`);
-                    
-                    if (allEntries.length > 0) {
-                        updateTable(allEntries);
-                        completeLoadingAnimation(allEntries.length);
+                    personDataById = {};
+                    let totalEntries = 0;
+                    results.forEach((entries, index) => {
+                        const emp = selectionSnapshot[index];
+                        const safeEntries = entries || [];
+                        personDataById[emp.id] = safeEntries;
+                        totalEntries += safeEntries.length;
+                    });
+
+                    if (!activePersonId || !personDataById[activePersonId]) {
+                        activePersonId = selectionSnapshot[0]?.id || null;
+                    }
+
+                    syncPersonDataWithSelection();
+                    renderPersonTabs();
+                    renderActivePersonTable();
+
+                    if (totalEntries > 0) {
+                        completeLoadingAnimation(totalEntries);
                         updateEmailSubjectPreview();
                     } else {
-                        updateTable([]);
                         errorLoadingAnimation();
                     }
                 })
                 .catch(error => {
                     console.error('Error loading data:', error);
-                    updateTable([]);
+                    personDataById = {};
+                    activePersonId = null;
+                    renderPersonTabs();
+                    renderActivePersonTable([]);
                     errorLoadingAnimation();
                 })
                 .finally(() => {
-                    // Button wieder aktivieren
                     if (loadButton) {
                         loadButton.disabled = false;
                         loadButton.innerHTML = `
@@ -694,31 +821,71 @@ Mit freundlichen Grüßen</textarea>
                 });
         }
 
-        function updateTable(data) {
-            const tbody = document.getElementById('data-table-body');
-            tbody.innerHTML = '';
-            
-            console.log('=== UPDATING TABLE ===');
-            console.log('Time entries received:', data);
-            
-            if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #6b7280;">Keine Daten verfügbar</td></tr>';
+        function renderPersonTabs() {
+            const tabContainer = document.getElementById('person-tabs');
+            const activeLabel = document.getElementById('active-person-label');
+            if (!tabContainer) return;
+
+            tabContainer.innerHTML = '';
+
+            if (selectedEmployees.length === 0) {
+                tabContainer.innerHTML = '<div class="person-tab-placeholder">Bitte Personen auswählen, um Daten-Tabs zu sehen.</div>';
+                if (activeLabel) {
+                    activeLabel.textContent = 'Keine Person ausgewählt';
+                }
                 return;
             }
-            
-            // Animiere das Einfügen der Zeilen
+
+            if (!activePersonId || !selectedEmployees.some(e => e.id === activePersonId)) {
+                activePersonId = selectedEmployees[0].id;
+            }
+
+            selectedEmployees.forEach(emp => {
+                const tab = document.createElement('button');
+                tab.className = `person-tab${emp.id === activePersonId ? ' active' : ''}`;
+                tab.textContent = emp.name;
+                tab.title = emp.name;
+                tab.addEventListener('click', () => {
+                    activePersonId = emp.id;
+                    renderPersonTabs();
+                    renderActivePersonTable();
+                });
+                tabContainer.appendChild(tab);
+            });
+
+            if (activeLabel) {
+                const activePerson = selectedEmployees.find(e => e.id === activePersonId);
+                activeLabel.textContent = activePerson ? `Aktive Person: ${activePerson.name}` : 'Keine Person ausgewählt';
+            }
+        }
+
+        function renderActivePersonTable(forceData) {
+            const tbody = document.getElementById('data-table-body');
+            if (!tbody) return;
+
+            const data = Array.isArray(forceData) ? forceData : (personDataById[activePersonId] || []);
+            const activePerson = selectedEmployees.find(e => e.id === activePersonId);
+            tbody.innerHTML = '';
+
+            if (!activePerson) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #6b7280;">Keine Person ausgewählt</td></tr>';
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #6b7280;">Keine Daten für ${activePerson.name} im gewählten Zeitraum</td></tr>`;
+                return;
+            }
+
             let delay = 0;
-            
-            data.forEach((entry, index) => {
+
+            data.forEach(entry => {
                 const tr = document.createElement('tr');
-                
-                // Name aufteilen in Vor- und Nachname
-                const fullName = entry.name || '';
+                const fullName = entry.name || activePerson.name || '';
                 const nameParts = fullName.split(' ');
                 const firstName = nameParts[0] || '';
                 const lastName = nameParts.slice(1).join(' ') || '';
-                
-                // Daten aus der API
+
                 const date = entry.date_formatted || '';
                 const timeStart = entry.time_start || '';
                 const timeEnd = entry.time_end || '';
@@ -727,7 +894,7 @@ Mit freundlichen Grüßen</textarea>
                 const actualHours = entry.actual_hours_formatted || '';
                 const project = entry.project || entry.organizationName || '';
                 const comment = entry.comment || '';
-                
+
                 tr.innerHTML = `
                     <td>${date}</td>
                     <td>${firstName}</td>
@@ -740,21 +907,19 @@ Mit freundlichen Grüßen</textarea>
                     <td>${project}</td>
                     <td>${comment}</td>
                 `;
-                
-                // Sanfte Animation für jede Zeile
+
                 tr.style.opacity = '0';
                 tr.style.transform = 'translateY(10px)';
                 tr.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-                
+
                 tbody.appendChild(tr);
-                
-                // Verzögerte Animation für gestaffelten Effekt
+
                 setTimeout(() => {
                     tr.style.opacity = '1';
                     tr.style.transform = 'translateY(0)';
                 }, delay);
-                
-                delay += 50; // 50ms Verzögerung zwischen den Zeilen
+
+                delay += 50;
             });
         }
 
@@ -1222,85 +1387,5 @@ Mit freundlichen Grüßen</textarea>
             to { transform: rotate(360deg); }
         }
     </style>
-</script>
-<script>
-// --- Mitarbeiter-Checkboxen, Tabs und CSV-Export ---
-document.addEventListener('DOMContentLoaded', function() {
-    // Mitarbeiter aus Jinja-Template holen
-    const employees = [
-        {% for employee in employees %}
-            { id: "{{ employee.id if employee is mapping else employee }}", name: "{{ employee.name if employee is mapping else employee }}" },
-        {% endfor %}
-    ];
-    const employeeCheckboxes = document.getElementById('employee-checkboxes');
-    const selectAllBox = document.getElementById('selectAllEmployees');
-    const tabsDiv = document.getElementById('employee-tabs');
-    const exportBtn = document.getElementById('exportCsvBtn');
-
-    // Checkboxen rendern
-    function renderCheckboxes() {
-        employeeCheckboxes.innerHTML = employees.map(emp =>
-            `<label style='margin-right:12px;'><input type='checkbox' class='empbox' value='${emp.id}'> ${emp.name}</label>`
-        ).join('');
-    }
-    renderCheckboxes();
-
-    // Auswahl-Logik
-    function getSelectedEmployees() {
-        return employees.filter(emp =>
-            document.querySelector(`.empbox[value='${emp.id}']`)?.checked
-        );
-    }
-
-    function updateTabs() {
-        const selected = getSelectedEmployees();
-        if (selected.length === 0) {
-            tabsDiv.innerHTML = '<span style="color:#888;">Keine Auswahl</span>';
-            exportBtn.style.display = 'none';
-        } else {
-            tabsDiv.innerHTML = selected.map(emp =>
-                `<span style='padding:6px 14px;margin-right:8px;background:#3b82f6;color:#fff;border-radius:8px;'>${emp.name}</span>`
-            ).join('');
-            exportBtn.style.display = 'inline-block';
-        }
-        // Betreff automatisch setzen
-        const subjectInput = document.getElementById('email-subject');
-        if(subjectInput) {
-            if(selected.length === 1) {
-                subjectInput.value = `Zeiterfassungsexport für ${selected[0].name}`;
-            } else if(selected.length > 1) {
-                subjectInput.value = `Zeiterfassungsexport für ${selected.length} Mitarbeiter`;
-            } else {
-                subjectInput.value = '';
-            }
-        }
-    }
-
-    // Checkbox-Events
-    employeeCheckboxes.addEventListener('change', function(e) {
-        if(e.target.classList.contains('empbox')) {
-            updateTabs();
-            // "Alle auswählen" synchronisieren
-            const allChecked = employees.every(emp => document.querySelector(`.empbox[value='${emp.id}']`).checked);
-            selectAllBox.checked = allChecked;
-        }
-    });
-    selectAllBox.addEventListener('change', function() {
-        document.querySelectorAll('.empbox').forEach(cb => cb.checked = selectAllBox.checked);
-        updateTabs();
-    });
-
-    // Initial Tabs
-    updateTabs();
-
-    // CSV-Export-Button
-    exportBtn.addEventListener('click', function() {
-        const selected = getSelectedEmployees();
-        if(selected.length === 0) return;
-        // Beispiel: CSV-Export Dummy (hier Backend-Route anpassen!)
-        const ids = selected.map(e => e.id).join(',');
-        window.location.href = `/download_csv?employee_ids=${encodeURIComponent(ids)}`;
-    });
-});
 </body>
 </html>

@@ -507,6 +507,39 @@ body {
     display: none !important;
 }
 
+.chip-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    min-height: 28px;
+}
+
+.chip-placeholder {
+    color: #94a3b8;
+    font-size: 14px;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: #eef2ff;
+    color: #1e293b;
+    font-weight: 600;
+    border: 1px solid #cbd5e1;
+}
+
+.chip button {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: #475569;
+    font-weight: 700;
+}
+
 .custom-select-wrapper {
     position: relative;
     width: 100%;
@@ -1044,6 +1077,80 @@ textarea.form-input {
 /* Modern Table Styles */
 .data-table-container {
     margin-top: 32px;
+}
+
+.person-tabs-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.person-tabs {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    overflow-x: auto;
+    padding: 6px 4px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+.person-tab {
+    flex: 1 1 160px;
+    min-width: 120px;
+    max-width: 240px;
+    padding: 10px 12px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    color: #1f2937;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.person-tab:hover {
+    border-color: #3b82f6;
+    color: #1d4ed8;
+    box-shadow: 0 3px 8px rgba(59,130,246,0.12);
+}
+
+.person-tab.active {
+    background: linear-gradient(135deg, #3b82f6, #60a5fa);
+    color: white;
+    border-color: #3b82f6;
+    box-shadow: 0 4px 12px rgba(59,130,246,0.25);
+}
+
+.person-tab-placeholder {
+    color: #6b7280;
+    font-size: 14px;
+    padding: 8px 12px;
+}
+
+.shared-filter-note {
+    font-size: 13px;
+    color: #475569;
+}
+
+.active-person-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 6px 0 12px 0;
+    color: #0f172a;
+    font-weight: 600;
+}
+
+.active-person-hint {
+    color: #64748b;
+    font-size: 13px;
 }
 
 .data-table {
