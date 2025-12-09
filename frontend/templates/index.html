@@ -221,13 +221,35 @@
                             {{ 'Verbunden' if db_status else 'Getrennt' }}
                         </span>
                     </div>
-                    <div class="person-tabs-wrapper">
-                        <div class="person-tabs" id="person-tabs"></div>
+                    <!-- Flexible Mitarbeiter-Ansicht (Tabs oder Dropdown je nach Anzahl) -->
+                    <div class="person-view-container" id="person-view-container">
+                        <!-- Modus 1: Tabs (bei ≤10 Mitarbeitern) -->
+                        <div class="person-tabs-wrapper" id="tabs-mode" style="display: none;">
+                            <div class="person-tabs" id="person-tabs"></div>
+                        </div>
+                        
+                        <!-- Modus 2: Dropdown (bei >10 Mitarbeitern) -->
+                        <div class="person-dropdown-wrapper" id="dropdown-mode" style="display: none;">
+                            <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <label style="font-weight: 500; color: #374151;">Person anzeigen:</label>
+                                    <select id="person-dropdown" class="form-input" style="min-width: 250px; padding: 8px 12px;">
+                                    </select>
+                                </div>
+                                <div id="person-stats" style="display: flex; gap: 16px; font-size: 13px; color: #6b7280;">
+                                    <!-- Statistik wird dynamisch eingefügt -->
+                                </div>
+                            </div>
+                            <div id="person-quick-nav" style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+                                <!-- Schnellnavigation für erste 5 + letzte geladen -->
+                            </div>
+                        </div>
+                        
                         <div class="shared-filter-note">Gemeinsame Filter werden für alle ausgewählten Personen angewendet.</div>
                     </div>
                     <div class="active-person-bar">
                         <div id="active-person-label">Keine Person ausgewählt</div>
-                        <div class="active-person-hint">Tab klicken, um zwischen Personen zu wechseln</div>
+                        <div class="active-person-hint" id="active-person-hint">Tab klicken, um zwischen Personen zu wechseln</div>
                     </div>
                     <div style="overflow-x: auto;">
                     <table class="data-table" id="data-table">
@@ -707,19 +729,22 @@ Mit freundlichen Grüßen</textarea>
             }, 20);
         }
         
-        function completeLoadingAnimation(recordCount) {
+        function completeLoadingAnimation(recordCount, loadTimeSeconds) {
             const progressFill = document.getElementById('progress-fill');
             const progressLabel = document.getElementById('progress-label');
             
             // Komplettiere auf 100%
             progressFill.style.width = '100%';
             progressFill.style.background = 'linear-gradient(90deg, #10b981 0%, #34d399 100%)';
-            progressLabel.textContent = `Erfolgreich geladen - ${recordCount} Datensätze`;
             
-            // Nach 2 Sekunden zurück zum Normalzustand
+            // Ladezeit anzeigen
+            const timeStr = loadTimeSeconds ? ` in ${loadTimeSeconds.toFixed(1)}s` : '';
+            progressLabel.textContent = `Erfolgreich geladen - ${recordCount} Datensätze${timeStr}`;
+            
+            // Nach 3 Sekunden zurück zum Normalzustand (länger damit man die Zeit sieht)
             setTimeout(() => {
                 resetProgressbar();
-            }, 2000);
+            }, 3000);
         }
         
         function errorLoadingAnimation() {
@@ -761,6 +786,7 @@ Mit freundlichen Grüßen</textarea>
             
             // Starte Ladeanimation
             startLoadingAnimation();
+            const loadStartTime = performance.now(); // Startzeit für Ladezeit-Messung
             
             // Button während Ladevorgang deaktivieren
             const loadButton = event?.target;
@@ -825,7 +851,8 @@ Mit freundlichen Grüßen</textarea>
                     renderActivePersonTable();
 
                     if (totalEntries > 0) {
-                        completeLoadingAnimation(totalEntries);
+                        const loadTimeSeconds = (performance.now() - loadStartTime) / 1000;
+                        completeLoadingAnimation(totalEntries, loadTimeSeconds);
                         updateEmailSubjectPreview();
                     } else {
                         errorLoadingAnimation();
@@ -852,41 +879,151 @@ Mit freundlichen Grüßen</textarea>
                 });
         }
 
+        // Schwellenwert für Umschaltung zwischen Tabs und Dropdown
+        const MAX_TABS_COUNT = 10;
+
         function renderPersonTabs() {
+            const tabsMode = document.getElementById('tabs-mode');
+            const dropdownMode = document.getElementById('dropdown-mode');
             const tabContainer = document.getElementById('person-tabs');
+            const dropdown = document.getElementById('person-dropdown');
             const activeLabel = document.getElementById('active-person-label');
-            if (!tabContainer) return;
+            const activeHint = document.getElementById('active-person-hint');
+            const personStats = document.getElementById('person-stats');
+            const quickNav = document.getElementById('person-quick-nav');
+            
+            if (!tabsMode || !dropdownMode) return;
 
-            tabContainer.innerHTML = '';
+            const count = selectedEmployees.length;
 
-            if (selectedEmployees.length === 0) {
-                tabContainer.innerHTML = '<div class="person-tab-placeholder">Bitte Personen auswählen, um Daten-Tabs zu sehen.</div>';
-                if (activeLabel) {
-                    activeLabel.textContent = 'Keine Person ausgewählt';
+            // Keine Auswahl
+            if (count === 0) {
+                tabsMode.style.display = 'block';
+                dropdownMode.style.display = 'none';
+                if (tabContainer) {
+                    tabContainer.innerHTML = '<div class="person-tab-placeholder">Bitte Personen auswählen, um Daten-Tabs zu sehen.</div>';
                 }
+                if (activeLabel) activeLabel.textContent = 'Keine Person ausgewählt';
+                if (activeHint) activeHint.textContent = '';
                 return;
             }
 
+            // Aktive Person setzen falls nicht vorhanden
             if (!activePersonId || !selectedEmployees.some(e => e.id === activePersonId)) {
                 activePersonId = selectedEmployees[0].id;
             }
 
-            selectedEmployees.forEach(emp => {
-                const tab = document.createElement('button');
-                tab.className = `person-tab${emp.id === activePersonId ? ' active' : ''}`;
-                tab.textContent = emp.name;
-                tab.title = emp.name;
-                tab.addEventListener('click', () => {
-                    activePersonId = emp.id;
-                    renderPersonTabs();
-                    renderActivePersonTable();
-                });
-                tabContainer.appendChild(tab);
-            });
+            // MODUS 1: Tabs (bei wenigen Mitarbeitern)
+            if (count <= MAX_TABS_COUNT) {
+                tabsMode.style.display = 'block';
+                dropdownMode.style.display = 'none';
+                
+                if (tabContainer) {
+                    tabContainer.innerHTML = '';
+                    selectedEmployees.forEach(emp => {
+                        const tab = document.createElement('button');
+                        tab.className = `person-tab${emp.id === activePersonId ? ' active' : ''}`;
+                        tab.textContent = emp.name;
+                        tab.title = emp.name;
+                        tab.addEventListener('click', () => {
+                            activePersonId = emp.id;
+                            renderPersonTabs();
+                            renderActivePersonTable();
+                        });
+                        tabContainer.appendChild(tab);
+                    });
+                }
+                
+                if (activeHint) activeHint.textContent = 'Tab klicken, um zwischen Personen zu wechseln';
+            }
+            // MODUS 2: Dropdown (bei vielen Mitarbeitern)
+            else {
+                tabsMode.style.display = 'none';
+                dropdownMode.style.display = 'block';
+                
+                // Dropdown befüllen
+                if (dropdown) {
+                    dropdown.innerHTML = '';
+                    selectedEmployees.forEach((emp, idx) => {
+                        const option = document.createElement('option');
+                        option.value = emp.id;
+                        option.textContent = `${idx + 1}. ${emp.name}`;
+                        if (emp.id === activePersonId) option.selected = true;
+                        dropdown.appendChild(option);
+                    });
+                    
+                    // Event Listener (nur einmal)
+                    dropdown.onchange = function() {
+                        activePersonId = this.value;
+                        renderPersonTabs();
+                        renderActivePersonTable();
+                    };
+                }
+                
+                // Statistik anzeigen
+                if (personStats) {
+                    const loadedCount = Object.keys(personDataById).length;
+                    const totalEntries = Object.values(personDataById).reduce((sum, arr) => sum + (arr?.length || 0), 0);
+                    personStats.innerHTML = `
+                        <span>📊 <strong>${count}</strong> Mitarbeiter ausgewählt</span>
+                        <span>📁 <strong>${loadedCount}</strong> mit Daten geladen</span>
+                        <span>📋 <strong>${totalEntries}</strong> Einträge gesamt</span>
+                    `;
+                }
+                
+                // Schnellnavigation (erste 5 + aktuelle)
+                if (quickNav) {
+                    quickNav.innerHTML = '';
+                    const quickItems = selectedEmployees.slice(0, 5);
+                    
+                    // Falls aktive Person nicht in den ersten 5 ist, hinzufügen
+                    const activeInQuick = quickItems.some(e => e.id === activePersonId);
+                    if (!activeInQuick) {
+                        const activePerson = selectedEmployees.find(e => e.id === activePersonId);
+                        if (activePerson) quickItems.push(activePerson);
+                    }
+                    
+                    quickItems.forEach(emp => {
+                        const btn = document.createElement('button');
+                        btn.className = `quick-nav-btn${emp.id === activePersonId ? ' active' : ''}`;
+                        btn.textContent = emp.name.split(' ')[0]; // Nur Vorname
+                        btn.title = emp.name;
+                        btn.style.cssText = `
+                            padding: 4px 12px;
+                            border-radius: 16px;
+                            font-size: 12px;
+                            border: 1px solid ${emp.id === activePersonId ? '#3b82f6' : '#e5e7eb'};
+                            background: ${emp.id === activePersonId ? '#3b82f6' : 'white'};
+                            color: ${emp.id === activePersonId ? 'white' : '#374151'};
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        `;
+                        btn.addEventListener('click', () => {
+                            activePersonId = emp.id;
+                            renderPersonTabs();
+                            renderActivePersonTable();
+                        });
+                        quickNav.appendChild(btn);
+                    });
+                    
+                    if (count > 5) {
+                        const moreLabel = document.createElement('span');
+                        moreLabel.style.cssText = 'font-size: 12px; color: #6b7280; padding: 4px 8px;';
+                        moreLabel.textContent = `+${count - 5} weitere (Dropdown nutzen)`;
+                        quickNav.appendChild(moreLabel);
+                    }
+                }
+                
+                if (activeHint) activeHint.textContent = 'Dropdown oder Schnellnavigation nutzen';
+            }
 
+            // Aktive Person Label aktualisieren
             if (activeLabel) {
                 const activePerson = selectedEmployees.find(e => e.id === activePersonId);
-                activeLabel.textContent = activePerson ? `Aktive Person: ${activePerson.name}` : 'Keine Person ausgewählt';
+                const idx = selectedEmployees.findIndex(e => e.id === activePersonId) + 1;
+                activeLabel.textContent = activePerson 
+                    ? `Aktive Person: ${activePerson.name}${count > MAX_TABS_COUNT ? ` (${idx}/${count})` : ''}`
+                    : 'Keine Person ausgewählt';
             }
         }
 
@@ -1443,6 +1580,51 @@ Mit freundlichen Grüßen</textarea>
         @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+        }
+        
+        /* Flexible Person View Styles */
+        .person-view-container {
+            margin-bottom: 16px;
+        }
+        
+        .person-dropdown-wrapper {
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .person-dropdown-wrapper select {
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+        }
+        
+        .person-dropdown-wrapper select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        #person-quick-nav {
+            padding-top: 12px;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .quick-nav-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        #person-stats span {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
         }
     </style>
 </body>

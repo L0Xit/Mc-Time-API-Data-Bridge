@@ -3,6 +3,11 @@ import os
 import io
 import csv
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
+from functools import lru_cache
+import hashlib
+import json
 
 # Füge Projekt-Root zum Pfad hinzu
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -27,6 +32,35 @@ app = Flask(__name__, template_folder='templates', static_folder='static')
 # Backend: McTime API-Logik, Datenverarbeitung
 
 API_KEY = os.getenv('MCTIME_API_KEY')
+
+# ==================== PERFORMANCE CACHE ====================
+# Cache für API-Daten (TTL: 5 Minuten)
+_cache = {}
+_cache_ttl = 300  # 5 Minuten
+
+def get_cache_key(prefix, **kwargs):
+    """Erstellt einen eindeutigen Cache-Key"""
+    data = json.dumps(kwargs, sort_keys=True)
+    return f"{prefix}_{hashlib.md5(data.encode()).hexdigest()}"
+
+def get_cached(key):
+    """Holt Daten aus Cache wenn noch gültig"""
+    if key in _cache:
+        data, timestamp = _cache[key]
+        if time.time() - timestamp < _cache_ttl:
+            return data
+        del _cache[key]
+    return None
+
+def set_cached(key, data):
+    """Speichert Daten im Cache"""
+    _cache[key] = (data, time.time())
+
+def clear_cache():
+    """Leert den Cache"""
+    global _cache
+    _cache = {}
+
 if not API_KEY:
     print("WARNING: MCTIME_API_KEY environment variable not set!")
     print("Please configure your .env file with MCTIME_API_KEY")
@@ -339,6 +373,24 @@ def get_organizations():
     return jsonify(organizations)
 
 
+@app.route('/api/cache/clear', methods=['POST'])
+def api_clear_cache():
+    """Cache manuell leeren für frische Daten"""
+    clear_cache()
+    return jsonify({"status": "success", "message": "Cache geleert"})
+
+
+@app.route('/api/cache/status')
+def api_cache_status():
+    """Zeigt Cache-Status"""
+    entries = len(_cache)
+    return jsonify({
+        "entries": entries,
+        "ttl_seconds": _cache_ttl,
+        "keys": list(_cache.keys())[:20]  # Max 20 Keys anzeigen
+    })
+
+
 @app.route('/api/chart-stats')
 def get_chart_stats():
     """
@@ -432,6 +484,15 @@ def get_chart_stats():
         month_ranges = generate_month_ranges(start_date, end_date)
     
     try:
+        # Cache-Key für diese Anfrage
+        cache_key = get_cache_key('chart_stats', filter=time_filter, month=month_param, date_from=date_from, date_to=date_to)
+        cached_result = get_cached(cache_key)
+        if cached_result:
+            print(f"✅ Chart-Stats aus Cache geladen!")
+            return jsonify(cached_result)
+        
+        start_time = time.time()
+        
         # Alle Mitarbeiter holen
         if backend_service:
             employees = backend_service.get_form_data().get('employees', [])
@@ -440,7 +501,7 @@ def get_chart_stats():
         else:
             employees = []
         
-        print(f"Chart-Stats: {len(employees)} Mitarbeiter gefunden, {len(month_ranges)} Monats-Bereiche")
+        print(f"⚡ Chart-Stats: {len(employees)} Mitarbeiter, {len(month_ranges)} Monats-Bereiche")
         
         # Statistiken sammeln
         total_hours = 0.0
@@ -450,16 +511,21 @@ def get_chart_stats():
         daily_hours = defaultdict(float)    # "2024-09-01", "2024-09-02", etc.
         all_time_entries = []
         
-        for emp in employees:
+        # ==================== PARALLELE VERARBEITUNG ====================
+        def fetch_employee_data(emp):
+            """Holt Daten für einen Mitarbeiter (wird parallel ausgeführt)"""
             emp_id = emp.get('id') or emp.get('value')
             emp_name = emp.get('name') or emp.get('label', 'Unbekannt')
             
             if not emp_id:
-                continue
+                return None
             
-            print(f"  Lade Daten für {emp_name} ({emp_id})...")
+            # Cache für einzelne Mitarbeiter
+            emp_cache_key = get_cache_key('emp_data', emp_id=emp_id, date_from=date_from, date_to=date_to)
+            cached_emp = get_cached(emp_cache_key)
+            if cached_emp:
+                return cached_emp
             
-            # Zeiteinträge für diesen Mitarbeiter holen (monatweise um API-Limit zu umgehen)
             time_entries = []
             for m_start, m_end in month_ranges:
                 try:
@@ -479,57 +545,91 @@ def get_chart_stats():
                         entries = []
                     time_entries.extend(entries)
                 except Exception as e:
-                    print(f"    Fehler bei {m_start} bis {m_end}: {e}")
                     continue
             
-            print(f"    -> {len(time_entries)} Einträge gefunden")
+            result = {
+                'emp_id': emp_id,
+                'emp_name': emp_name,
+                'time_entries': time_entries
+            }
             
-            emp_total = 0.0
-            for entry in time_entries:
-                work_hours = entry.get('actual_work_hours', 0) or 0
-                emp_total += work_hours
-                
-                # Wochentag-Statistik und Tages-Statistik
-                try:
-                    from_date = entry.get('from', '')
-                    if from_date:
-                        dt = datetime.fromisoformat(from_date.replace('Z', '+00:00'))
-                        weekday_hours[dt.weekday()] += work_hours
-                        
-                        # Monats-Statistik
-                        month_key = dt.strftime('%Y-%m')
-                        monthly_hours[month_key] += work_hours
-                        
-                        # Tages-Statistik
-                        day_key = dt.strftime('%Y-%m-%d')
-                        daily_hours[day_key] += work_hours
-                except:
-                    pass
-                
-                # Projekt aus comment extrahieren (z.B. "Software, ECU - Chiptuning" oder "Programming")
-                comment = entry.get('comment', '') or ''
-                comment = comment.strip()
-                if comment:
-                    # Bereinige den Kommentar - entferne Zeilenumbrüche
-                    project_name = comment.replace('\n', '').strip()
-                else:
-                    project_name = entry.get('organizationName', 'Sonstiges') or 'Sonstiges'
-                
-                all_time_entries.append({
-                    'name': emp_name,
-                    'hours': work_hours,
-                    'date': entry.get('date_formatted', ''),
-                    'project': project_name
-                })
+            # Ergebnis cachen
+            set_cached(emp_cache_key, result)
+            return result
+        
+        # Parallel ausführen mit ThreadPool (max 10 gleichzeitige Anfragen)
+        max_workers = min(10, len(employees))  # Max 10 parallel, nicht mehr als MA-Anzahl
+        
+        print(f"⚡ Starte parallele Verarbeitung mit {max_workers} Workers...")
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Alle Jobs einreichen
+            future_to_emp = {executor.submit(fetch_employee_data, emp): emp for emp in employees}
             
-            total_hours += emp_total
-            
-            if emp_total > 0:
-                employee_stats.append({
-                    'name': emp_name,
-                    'hours': round(emp_total, 2),
-                    'entries': len(time_entries)
-                })
+            completed = 0
+            for future in as_completed(future_to_emp):
+                completed += 1
+                result = future.result()
+                
+                if not result:
+                    continue
+                
+                emp_name = result['emp_name']
+                time_entries = result['time_entries']
+                
+                # Progress (alle 10 MA)
+                if completed % 10 == 0:
+                    elapsed = time.time() - start_time
+                    print(f"  ⏳ {completed}/{len(employees)} Mitarbeiter verarbeitet ({elapsed:.1f}s)")
+                
+                emp_total = 0.0
+                for entry in time_entries:
+                    work_hours = entry.get('actual_work_hours', 0) or 0
+                    emp_total += work_hours
+                    
+                    # Wochentag-Statistik und Tages-Statistik
+                    try:
+                        from_date = entry.get('from', '')
+                        if from_date:
+                            dt = datetime.fromisoformat(from_date.replace('Z', '+00:00'))
+                            weekday_hours[dt.weekday()] += work_hours
+                            
+                            # Monats-Statistik
+                            month_key = dt.strftime('%Y-%m')
+                            monthly_hours[month_key] += work_hours
+                            
+                            # Tages-Statistik
+                            day_key = dt.strftime('%Y-%m-%d')
+                            daily_hours[day_key] += work_hours
+                    except:
+                        pass
+                    
+                    # Projekt aus comment extrahieren
+                    comment = entry.get('comment', '') or ''
+                    comment = comment.strip()
+                    if comment:
+                        project_name = comment.replace('\n', '').strip()
+                    else:
+                        project_name = entry.get('organizationName', 'Sonstiges') or 'Sonstiges'
+                    
+                    all_time_entries.append({
+                        'name': emp_name,
+                        'hours': work_hours,
+                        'date': entry.get('date_formatted', ''),
+                        'project': project_name
+                    })
+                
+                total_hours += emp_total
+                
+                if emp_total > 0:
+                    employee_stats.append({
+                        'name': emp_name,
+                        'hours': round(emp_total, 2),
+                        'entries': len(time_entries)
+                    })
+        
+        elapsed_total = time.time() - start_time
+        print(f"✅ Alle {len(employees)} Mitarbeiter in {elapsed_total:.1f}s verarbeitet!")
         
         # Wochentage formatieren
         weekday_data = [
@@ -576,10 +676,12 @@ def get_chart_stats():
         project_labels = [p[0] for p in sorted_projects]
         project_values = [round(p[1], 1) for p in sorted_projects]
         
-        # Mitarbeiter nach Stunden sortieren
+        # Mitarbeiter nach Stunden sortieren - TOP 10 für Ranking
         employee_stats.sort(key=lambda x: x['hours'], reverse=True)
+        top_employees = employee_stats[:10]  # Nur Top 10 für Chart anzeigen
+        total_employees = len(employee_stats)  # Gesamtzahl merken
         
-        return jsonify({
+        result = {
             'status': 'success',
             'filter': time_filter,
             'filter_label': filter_label,
@@ -604,11 +706,18 @@ def get_chart_stats():
                 'values': project_values
             },
             'employee_data': {
-                'labels': [e['name'].split()[0] + ' ' + e['name'].split()[-1][0] + '.' if ' ' in e['name'] else e['name'] for e in employee_stats],
-                'values': [e['hours'] for e in employee_stats],
-                'full_names': [e['name'] for e in employee_stats]
+                'labels': [e['name'].split()[0] + ' ' + e['name'].split()[-1][0] + '.' if ' ' in e['name'] else e['name'] for e in top_employees],
+                'values': [e['hours'] for e in top_employees],
+                'full_names': [e['name'] for e in top_employees],
+                'total_count': total_employees,
+                'showing': len(top_employees)
             }
-        })
+        }
+        
+        # Ergebnis cachen für 5 Minuten
+        set_cached(cache_key, result)
+        
+        return jsonify(result)
         
     except Exception as e:
         print(f"Error in chart-stats: {e}")
@@ -911,4 +1020,5 @@ def download_csv():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(debug=True, port=port)
+    debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+    app.run(debug=debug, host='0.0.0.0', port=port)
