@@ -331,15 +331,25 @@ Mit freundlichen Grüßen</textarea>
             const dropdown = wrapper.querySelector('.custom-select-dropdown');
             const options = wrapper.querySelectorAll('.multi-option');
             const searchInput = wrapper.querySelector('.custom-select-search-input');
+            
+            // Reset arrays
             allEmployeesData = [];
             selectedEmployees = [];
+            
             // Alle Mitarbeiter-Daten sammeln
             options.forEach(opt => {
-                allEmployeesData.push({
-                    id: opt.dataset.value,
-                    name: opt.dataset.name
-                });
+                const empId = opt.dataset.value;
+                const empName = opt.dataset.name;
+                if (empId && empName) {
+                    allEmployeesData.push({
+                        id: empId,
+                        name: empName
+                    });
+                }
             });
+            
+            console.log('Mitarbeiter geladen:', allEmployeesData.length);
+            
             // Toggle Dropdown
             trigger.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -415,11 +425,32 @@ Mit freundlichen Grüßen</textarea>
         
         // Alle Mitarbeiter auswählen
         function selectAllEmployees() {
-            selectedEmployees = [...allEmployeesData];
+            // Stelle sicher, dass allEmployeesData gefüllt ist
+            if (allEmployeesData.length === 0) {
+                const wrapper = document.querySelector('.multi-select[data-target="employee-select"]');
+                if (wrapper) {
+                    const options = wrapper.querySelectorAll('.multi-option');
+                    options.forEach(opt => {
+                        if (opt.dataset.value && opt.dataset.name) {
+                            allEmployeesData.push({
+                                id: opt.dataset.value,
+                                name: opt.dataset.name
+                            });
+                        }
+                    });
+                }
+            }
+            
+            // Kopiere alle Mitarbeiter in die Auswahl
+            selectedEmployees = allEmployeesData.map(emp => ({ id: emp.id, name: emp.name }));
+            
+            // Synchronisiere UI
             syncCheckboxesWithSelection();
             updateEmployeeDisplay();
             updateEmailSubjectPreview();
             syncHiddenSelect();
+            
+            console.log('Alle ausgewählt:', selectedEmployees.length, 'von', allEmployeesData.length);
         }
         
         // Auswahl leeren
@@ -458,57 +489,57 @@ Mit freundlichen Grüßen</textarea>
         
         // Anzeige aktualisieren
         function updateEmployeeDisplay() {
-            const valueSpan = document.querySelector('.multi-select .custom-select-value');
             const countSpan = document.getElementById('selected-count');
             const count = selectedEmployees.length;
             const total = allEmployeesData.length;
             const chipContainer = document.getElementById('employee-chips');
+            
+            console.log('updateEmployeeDisplay:', { count, total, selectedEmployees });
+            
+            // Chip-Container im Trigger-Feld aktualisieren
             if (chipContainer) {
-                chipContainer.innerHTML = '';
+                // Zuerst alles leeren
+                while (chipContainer.firstChild) {
+                    chipContainer.removeChild(chipContainer.firstChild);
+                }
+                
+                const label = document.createElement('span');
+                label.className = 'chip-placeholder';
+                
+                if (count === 0) {
+                    // Keine Auswahl
+                    label.textContent = 'Mitarbeiter wählen...';
+                    label.style.color = '#9ca3af';
+                } else if (count === 1) {
+                    // Genau 1 ausgewählt: Nur der Name
+                    label.textContent = selectedEmployees[0].name;
+                    label.style.color = '#1e293b';
+                    label.style.fontWeight = '500';
+                } else {
+                    // Mehrere ausgewählt: "Ausgewählte Mitarbeiter (X)"
+                    label.textContent = `Ausgewählte Mitarbeiter (${count})`;
+                    label.style.color = '#1e293b';
+                    label.style.fontWeight = '500';
+                }
+                
+                chipContainer.appendChild(label);
             }
             
-            if (count === 0) {
-                if (valueSpan) {
-                    valueSpan.textContent = 'Mitarbeiter wählen...';
+            // Count-Anzeige unter dem Dropdown aktualisieren
+            if (countSpan) {
+                if (count === 0) {
+                    countSpan.textContent = 'Keine Mitarbeiter ausgewählt';
+                    countSpan.style.color = '#6b7280';
+                } else if (count === 1) {
+                    countSpan.textContent = '1 Mitarbeiter ausgewählt';
+                    countSpan.style.color = '#10b981';
+                } else if (count === total && total > 0) {
+                    countSpan.textContent = `Alle ${count} Mitarbeiter ausgewählt`;
+                    countSpan.style.color = '#3b82f6';
+                } else {
+                    countSpan.textContent = `${count} von ${total} Mitarbeitern ausgewählt`;
+                    countSpan.style.color = '#10b981';
                 }
-                if (chipContainer) {
-                    chipContainer.innerHTML = '<span class="chip-placeholder">Mitarbeiter wählen...</span>';
-                }
-                countSpan.textContent = 'Keine Mitarbeiter ausgewählt';
-                countSpan.style.color = '#6b7280';
-            } else if (count === 1) {
-                if (valueSpan) {
-                    valueSpan.textContent = selectedEmployees[0].name;
-                }
-                if (chipContainer) {
-                    chipContainer.appendChild(createChip(selectedEmployees[0]));
-                }
-                countSpan.textContent = '1 Mitarbeiter ausgewählt';
-                countSpan.style.color = '#10b981';
-            } else if (count === total) {
-                if (valueSpan) {
-                    valueSpan.textContent = `Alle Mitarbeiter (${count})`;
-                }
-                if (chipContainer) {
-                    chipContainer.appendChild(createChip({ name: `Alle ${count} Mitarbeiter`, id: 'all' }, true));
-                }
-                countSpan.textContent = `Alle ${count} Mitarbeiter ausgewählt`;
-                countSpan.style.color = '#3b82f6';
-            } else {
-                if (valueSpan) {
-                    valueSpan.textContent = `${count} Mitarbeiter ausgewählt`;
-                }
-                if (chipContainer) {
-                    selectedEmployees.slice(0, 4).forEach(emp => chipContainer.appendChild(createChip(emp)));
-                    if (selectedEmployees.length > 4) {
-                        const more = document.createElement('span');
-                        more.className = 'chip-placeholder';
-                        more.textContent = `+${selectedEmployees.length - 4} mehr`;
-                        chipContainer.appendChild(more);
-                    }
-                }
-                countSpan.textContent = `${count} von ${total} Mitarbeitern ausgewählt`;
-                countSpan.style.color = '#10b981';
             }
             
             // Hidden select aktualisieren
@@ -650,7 +681,7 @@ Mit freundlichen Grüßen</textarea>
             document.getElementById('date-to').value = formatDate(toDate);
             
             // Aktiviere den geklickten Button
-            if (event && event.target) {
+            if (typeof event !== 'undefined' && event && event.target && event.target.classList) {
                 event.target.classList.add('active');
             }
         }
@@ -925,13 +956,22 @@ Mit freundlichen Grüßen</textarea>
 
         function downloadCSV() {
             const company = document.getElementById('company-select').value;
-            const employee = document.getElementById('employee-select').value;
             const dateFrom = document.getElementById('date-from').value;
             const dateTo = document.getElementById('date-to').value;
             
+            // Validierung
+            if (selectedEmployees.length === 0 || !dateFrom || !dateTo) {
+                alert('Bitte wählen Sie mindestens einen Mitarbeiter und einen Zeitraum aus.');
+                return;
+            }
+            
             const params = new URLSearchParams();
             if (company) params.append('company', company);
-            if (employee) params.append('employee', employee);
+            
+            // Multi-Mitarbeiter Support: Übergebe alle ausgewählten IDs
+            const employeeIds = selectedEmployees.map(e => e.id);
+            params.append('employee_ids', JSON.stringify(employeeIds));
+            
             if (dateFrom) params.append('date_from', dateFrom);
             if (dateTo) params.append('date_to', dateTo);
             
@@ -1240,17 +1280,23 @@ Mit freundlichen Grüßen</textarea>
         // Dynamisches Laden der Mitarbeiter basierend auf Firma
         async function loadEmployeesByCompany(companyId) {
             const employeeWrapper = document.querySelector('[data-target="employee-select"]');
+            if (!employeeWrapper) return;
+            
             const employeeOptions = employeeWrapper.querySelector('.custom-select-options');
             const employeeSelect = document.getElementById('employee-select');
-            const valueDisplay = employeeWrapper.querySelector('.custom-select-value');
+            const chipContainer = document.getElementById('employee-chips');
             
             // Hole den Firmennamen aus dem Custom Select
             const companyWrapper = document.querySelector('[data-target="company-select"]');
-            const companyName = companyWrapper.querySelector('.custom-select-value').textContent.trim();
+            const companyName = companyWrapper ? companyWrapper.querySelector('.custom-select-value')?.textContent?.trim() : '';
             
             // Loading-Anzeige
-            employeeOptions.innerHTML = '<div class="custom-select-option" style="justify-content: center;"><svg class="loading-spinner" viewBox="0 0 24 24" style="width: 20px; height: 20px; animation: spin 1s linear infinite;"><path fill="currentColor" d="M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z"/></svg></div>';
-            valueDisplay.textContent = 'Laden...';
+            if (employeeOptions) {
+                employeeOptions.innerHTML = '<div class="custom-select-option" style="justify-content: center;"><svg class="loading-spinner" viewBox="0 0 24 24" style="width: 20px; height: 20px; animation: spin 1s linear infinite;"><path fill="currentColor" d="M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z"/></svg></div>';
+            }
+            if (chipContainer) {
+                chipContainer.innerHTML = '<span class="chip-placeholder">Laden...</span>';
+            }
             
             try {
                 let url = '/api/employees';
@@ -1273,7 +1319,9 @@ Mit freundlichen Grüßen</textarea>
                 const employees = Array.isArray(data) ? data : (data.employees || []);
                 
                 // Hidden Select leeren und neu aufbauen
-                employeeSelect.innerHTML = '<option value="">Mitarbeiter wählen...</option>';
+                if (employeeSelect) {
+                    employeeSelect.innerHTML = '<option value="">Mitarbeiter wählen...</option>';
+                }
                 
                 // Custom Options leeren und neu aufbauen
                 let optionsHTML = '<div class="custom-select-option" data-value="">Mitarbeiter wählen...</div>';
@@ -1284,10 +1332,12 @@ Mit freundlichen Grüßen</textarea>
                         const name = emp.name || emp;
                         
                         // Hidden select option
-                        const option = document.createElement('option');
-                        option.value = id;
-                        option.textContent = name;
-                        employeeSelect.appendChild(option);
+                        if (employeeSelect) {
+                            const option = document.createElement('option');
+                            option.value = id;
+                            option.textContent = name;
+                            employeeSelect.appendChild(option);
+                        }
                         
                         // Custom option
                         optionsHTML += `<div class="custom-select-option" data-value="${id}">${name}</div>`;
@@ -1296,16 +1346,24 @@ Mit freundlichen Grüßen</textarea>
                     optionsHTML += '<div class="custom-select-option" data-value="" style="color: var(--text-secondary);">Keine Mitarbeiter gefunden</div>';
                 }
                 
-                employeeOptions.innerHTML = optionsHTML;
-                valueDisplay.textContent = 'Mitarbeiter wählen...';
+                if (employeeOptions) {
+                    employeeOptions.innerHTML = optionsHTML;
+                }
+                if (chipContainer) {
+                    chipContainer.innerHTML = '<span class="chip-placeholder">Mitarbeiter wählen...</span>';
+                }
                 
                 // Event Listener für neue Options hinzufügen
                 attachEmployeeOptionListeners(employeeWrapper);
                 
             } catch (error) {
                 console.error('Fehler beim Laden der Mitarbeiter:', error);
-                employeeOptions.innerHTML = '<div class="custom-select-option" data-value="">Fehler beim Laden</div>';
-                valueDisplay.textContent = 'Mitarbeiter wählen...';
+                if (employeeOptions) {
+                    employeeOptions.innerHTML = '<div class="custom-select-option" data-value="">Fehler beim Laden</div>';
+                }
+                if (chipContainer) {
+                    chipContainer.innerHTML = '<span class="chip-placeholder">Mitarbeiter wählen...</span>';
+                }
             }
         }
         

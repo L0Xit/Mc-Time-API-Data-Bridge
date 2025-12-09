@@ -635,7 +635,9 @@ def send_custom_email():
         "email_cc": "cc1@example.com, cc2@example.com",        # Optional: CC Empfänger
         "email_subject": "Custom Subject",                      # Optional: benutzerdefinierter Betreff
         "attach_csv": true,                                     # Optional: CSV anhängen (default: true)
-        "message": "Zusätzliche Nachricht"                     # Optional: persönliche Nachricht
+        "message": "Zusätzliche Nachricht",                    # Optional: persönliche Nachricht
+        "employee_ids": ["uuid1", "uuid2"],                    # Optional: Multiple employee IDs
+        "employee_names": ["Name1", "Name2"]                   # Optional: Multiple employee names
     }
     """
     try:
@@ -653,52 +655,103 @@ def send_custom_email():
             }), 400
         
         # Pflichtfelder
-        employee_id = data.get('employee_id')
         date_from = data.get('date_from')  
         date_to = data.get('date_to')
         
-        if not all([employee_id, date_from, date_to]):
+        # Multi-Mitarbeiter Support
+        employee_ids = data.get('employee_ids', [])
+        employee_names = data.get('employee_names', [])
+        
+        # Fallback für einzelnen Mitarbeiter
+        if not employee_ids:
+            employee_id = data.get('employee_id')
+            if employee_id:
+                # Prüfe ob es komma-getrennte IDs sind
+                if ',' in str(employee_id):
+                    employee_ids = [e.strip() for e in employee_id.split(',')]
+                else:
+                    employee_ids = [employee_id]
+        
+        if not employee_names:
+            employee_name = data.get('employee_name', 'Mitarbeiter')
+            employee_names = [employee_name]
+        
+        if not employee_ids or not date_from or not date_to:
             return jsonify({
                 'status': 'error',
-                'message': 'Pflichtfelder: employee_id, date_from, date_to'
+                'message': 'Pflichtfelder: employee_id(s), date_from, date_to'
             }), 400
         
         # Optionale Felder
-        employee_name = data.get('employee_name', 'Mitarbeiter')
         custom_email = data.get('email_to')
         email_cc = data.get('email_cc', '')
         custom_subject = data.get('email_subject')
         attach_csv = data.get('attach_csv', True)
         custom_message = data.get('message', '')
         
-        # Wenn kein custom_subject, aber custom_message vorhanden
-        if custom_message and not custom_subject:
-            custom_subject = f"Zeiterfassung - {custom_message}"
-        
         # Normalisiere Datums-Format
-        date_from = middleware._normalize_date(date_from)
-        date_to = middleware._normalize_date(date_to)
+        date_from_normalized = middleware._normalize_date(date_from)
+        date_to_normalized = middleware._normalize_date(date_to)
         
-        print(f"=== CUSTOM EMAIL REQUEST ===")
-        print(f"Employee: {employee_name} ({employee_id})")
-        print(f"Period: {date_from} - {date_to}")
+        print(f"=== MULTI-EMPLOYEE EMAIL REQUEST ===")
+        print(f"Employees: {len(employee_ids)} selected")
+        print(f"Names: {employee_names}")
+        print(f"Period: {date_from_normalized} - {date_to_normalized}")
         print(f"Custom Email (To): {custom_email}")
         print(f"CC Recipients: {email_cc}")
-        print(f"Custom Subject: {custom_subject}")
         print(f"Attach CSV: {attach_csv}")
-        print(f"Custom Message: {custom_message}")
         
-        # Sende über Middleware
-        result = middleware.send_time_report_email(
-            employee_id=employee_id,
-            employee_name=employee_name,
+        # Sammle Daten für alle ausgewählten Mitarbeiter
+        all_time_entries = []
+        employee_data = []
+        
+        for idx, emp_id in enumerate(employee_ids):
+            emp_name = employee_names[idx] if idx < len(employee_names) else f"Mitarbeiter {idx+1}"
+            
+            try:
+                entries = middleware.get_time_entries(
+                    employee_id=emp_id,
+                    date_from=date_from_normalized,
+                    date_to=date_to_normalized
+                )
+                
+                # Füge Name zu jedem Eintrag hinzu
+                for entry in entries:
+                    entry['name'] = emp_name
+                    entry['employee_id'] = emp_id
+                
+                all_time_entries.extend(entries)
+                employee_data.append({
+                    'id': emp_id,
+                    'name': emp_name,
+                    'entry_count': len(entries)
+                })
+                print(f"  {emp_name}: {len(entries)} Einträge")
+            except Exception as e:
+                print(f"  Fehler bei {emp_name}: {e}")
+        
+        if not all_time_entries:
+            return jsonify({
+                'status': 'error',
+                'message': 'Keine Zeiteinträge für die ausgewählten Mitarbeiter gefunden'
+            }), 400
+        
+        # Bestimme ob "Alle" ausgewählt sind
+        all_employees = middleware.get_employees()
+        is_all_selected = len(employee_ids) == len(all_employees)
+        
+        # Erstelle E-Mail mit Template
+        result = middleware.send_multi_employee_report(
+            employees=employee_data,
+            time_entries=all_time_entries,
             date_from=date_from,
             date_to=date_to,
             custom_email=custom_email,
             email_cc=email_cc,
             custom_subject=custom_subject,
             attach_csv=attach_csv,
-            custom_message=custom_message
+            custom_message=custom_message,
+            is_all_employees=is_all_selected
         )
         
         return jsonify(result)
@@ -743,30 +796,64 @@ def test_csv_structure(employee_id):
 
 @app.route('/download_csv')
 def download_csv():
-    """CSV-Download - Daten über Middleware"""
+    """CSV-Download - Daten über Middleware (unterstützt mehrere Mitarbeiter)"""
     if not middleware:
         return jsonify({"error": "Middleware nicht initialisiert"}), 500
     
     # Filter aus Request-Parametern holen
     company = request.args.get('company')
-    employee = request.args.get('employee')
+    employee = request.args.get('employee')  # Kann komma-getrennt sein
+    employee_ids = request.args.get('employee_ids')  # JSON array
     date_from = request.args.get('date_from')
     date_to = request.args.get('date_to')
     
-    if not all([employee, date_from, date_to]):
-        return jsonify({"error": "Fehlende Parameter"}), 400
+    if not date_from or not date_to:
+        return jsonify({"error": "Fehlende Parameter: date_from, date_to"}), 400
     
     # Normalisiere Datum
-    date_from = middleware._normalize_date(date_from)
-    date_to = middleware._normalize_date(date_to)
+    date_from_normalized = middleware._normalize_date(date_from)
+    date_to_normalized = middleware._normalize_date(date_to)
     
-    # Daten über Middleware holen
-    data = middleware.get_time_entries(
-        employee_id=employee,
-        date_from=date_from,
-        date_to=date_to,
-        organization_id=company
-    )
+    # Multi-Mitarbeiter Support
+    employees_to_fetch = []
+    
+    if employee_ids:
+        # JSON array von IDs
+        import json
+        try:
+            employees_to_fetch = json.loads(employee_ids)
+        except:
+            employees_to_fetch = [employee_ids]
+    elif employee:
+        # Komma-getrennte IDs oder einzelne ID
+        if ',' in str(employee):
+            employees_to_fetch = [e.strip() for e in employee.split(',')]
+        else:
+            employees_to_fetch = [employee]
+    
+    if not employees_to_fetch:
+        return jsonify({"error": "Fehlende Parameter: employee oder employee_ids"}), 400
+    
+    # Sammle alle Daten
+    all_data = []
+    for emp_id in employees_to_fetch:
+        try:
+            data = middleware.get_time_entries(
+                employee_id=emp_id,
+                date_from=date_from_normalized,
+                date_to=date_to_normalized,
+                organization_id=company
+            )
+            # Füge employee_id zu jedem Eintrag hinzu falls nicht vorhanden
+            for entry in data:
+                if 'employee_id' not in entry:
+                    entry['employee_id'] = emp_id
+            all_data.extend(data)
+        except Exception as e:
+            print(f"Fehler beim Laden für {emp_id}: {e}")
+    
+    if not all_data:
+        return jsonify({"error": "Keine Daten gefunden"}), 404
     
     # CSV-Header erstellen - Original McTime Format
     headers = [
@@ -777,8 +864,8 @@ def download_csv():
     ]
     csv_data = [headers]
     
-    # Daten hinzufügen im korrekten Format
-    for row in data:
+    # Daten hinzufügen im korrekten Format (verwende all_data statt data)
+    for row in all_data:
         # Name aufteilen
         name_parts = (row.get('name', '') or '').split(' ', 1)
         first_name = name_parts[0] if len(name_parts) > 0 else ''
@@ -798,7 +885,7 @@ def download_csv():
             '',                                     # Projektnummer
             '',                                     # Auftragsnummer
             row.get('project', ''),                 # Projekt / Gruppenname
-            ''                                      # Kommentar
+            row.get('comment', '')                  # Kommentar
         ])
     
     # CSV in Memory erstellen mit Semicolon-Delimiter (wie im Original)
@@ -806,11 +893,17 @@ def download_csv():
     writer = csv.writer(output, delimiter=';')
     writer.writerows(csv_data)
     
+    # Dateiname basierend auf Anzahl Mitarbeiter
+    if len(employees_to_fetch) == 1:
+        filename = "zeitdaten_export.csv"
+    else:
+        filename = f"zeitdaten_{len(employees_to_fetch)}_mitarbeiter_export.csv"
+    
     # Response erstellen
     response = Response(
         output.getvalue(),
         mimetype='text/csv',
-        headers={"Content-disposition": "attachment; filename=zeitdaten_export.csv"}
+        headers={"Content-disposition": f"attachment; filename={filename}"}
     )
     
     return response
