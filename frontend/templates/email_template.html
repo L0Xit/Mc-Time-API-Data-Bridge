@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Mail Vorschau - McTime API Data Bridge</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='mctime_icon.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .preview-container {
+            width: 100%;
+            max-width: none;
+            margin: 0;
+        }
+
+        .preview-section {
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #e1e8ed;
+            padding: 24px;
+        }
+
+        .preview-section h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e1e8ed;
+        }
+
+        .no-data-message {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            color: #92400e;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            grid-column: 1 / -1;
+        }
+
+        .no-data-message svg {
+            flex-shrink: 0;
+        }
+
+        .preview-frame {
+            background: #f8fafc;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+            padding: 24px;
+            min-height: 400px;
+        }
+
+        .preview-header {
+            background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+            color: white;
+            padding: 16px 20px;
+            border-radius: 8px 8px 0 0;
+            font-size: 13px;
+            margin: -24px -24px 24px -24px;
+        }
+
+        .preview-header span {
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .preview-content {
+            font-size: 14px;
+            line-height: 1.7;
+            color: #374151;
+        }
+
+        .preview-content h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #1f2937;
+        }
+
+        .preview-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .preview-content table th,
+        .preview-content table td {
+            border: 1px solid #d1d5db;
+            padding: 10px 14px;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        .preview-content table th {
+            background: #f3f4f6;
+            font-weight: 600;
+        }
+
+        .preview-content table tr:nth-child(even) {
+            background: #f9fafb;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #6b7280;
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: 16px;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: #374151;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .editor-preview-grid {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 24px;
+            width: 100%;
+        }
+
+        .editor {
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #e1e8ed;
+            padding: 24px;
+            height: fit-content;
+            position: sticky;
+            top: 24px;
+        }
+
+        .editor h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e1e8ed;
+        }
+
+        .editor .form-group { margin-bottom: 16px; }
+        .editor label { 
+            display: block; 
+            margin-bottom: 8px; 
+            font-weight: 600;
+            font-size: 14px;
+            color: #374151;
+        }
+        .editor input, .editor textarea { 
+            width: 100%; 
+            padding: 10px 12px; 
+            border-radius: 8px; 
+            border: 1px solid #d1d5db;
+            font-size: 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .editor input:focus, .editor textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .editor textarea { min-height: 100px; resize: vertical; }
+
+        .editor-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid #e1e8ed;
+        }
+
+        .variable-hint {
+            background: #f3f4f6;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 16px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .variable-hint strong {
+            display: block;
+            margin-bottom: 6px;
+            color: #374151;
+        }
+
+        .variable-hint code {
+            background: #e5e7eb;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        @media (max-width: 1100px) {
+            .editor-preview-grid { grid-template-columns: 1fr; }
+            .editor { position: static; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Modern Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo-section">
+                <img src="{{ url_for('static', filename='mctime_logo.png') }}" alt="McTime Logo" class="logo">
+                <span class="logo-text">Daten — Datentransparenz & Konsistenz, unser Ding</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Sidebar -->
+    <nav class="sidebar">
+        <div class="nav-icon" title="Home" onclick="window.location.href = '/'">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+            </svg>
+        </div>
+        <div class="nav-icon" title="Charts">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L3.5 15.9z"/>
+            </svg>
+        </div>
+        <div class="nav-icon" title="Time">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z"/>
+            </svg>
+        </div>
+        <div class="nav-icon active" title="E-Mail Vorschau">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M20,8L12,13L4,8V6L12,11L20,6M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,4.89 21.1,4 20,4Z"/>
+            </svg>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <a href="/" class="back-link">
+            <svg class="icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                <path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"/>
+            </svg>
+            Zurück zur Übersicht
+        </a>
+
+        <div class="page-header">
+            <h1 class="page-title">E-Mail Vorschau</h1>
+            <p style="color: #6b7280; font-size: 14px;">So wird die E-Mail an den Mitarbeiter aussehen.</p>
+        </div>
+
+        <div class="preview-container">
+            <div class="editor-preview-grid">
+                <!-- Editor (links) -->
+                <div class="editor" id="editor-panel">
+                    <h3>✏️ Vorlage bearbeiten</h3>
+                    <div class="form-group">
+                        <label for="email-subject">Betreff</label>
+                        <input type="text" id="email-subject" placeholder="E-Mail Betreff...">
+                    </div>
+                    <div class="form-group">
+                        <label for="email-header">Überschrift</label>
+                        <input type="text" id="email-header" placeholder="Überschrift in der E-Mail...">
+                    </div>
+                    <div class="form-group">
+                        <label for="email-intro">Einleitungstext</label>
+                        <textarea id="email-intro" placeholder="Einleitender Text..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="email-footer">Fußzeile</label>
+                        <textarea id="email-footer" placeholder="Fußzeilen-Text..."></textarea>
+                    </div>
+                    
+                    <div class="variable-hint">
+                        <strong>Verfügbare Variablen:</strong>
+                        <code>{<!-- -->{mitarbeiter_name}<!-- -->}</code>
+                        <code>{<!-- -->{von}<!-- -->}</code>
+                        <code>{<!-- -->{bis}<!-- -->}</code>
+                        <code>{<!-- -->{anzahl_eintraege}<!-- -->}</code>
+                        <code>{<!-- -->{gesamt_stunden}<!-- -->}</code>
+                        <code>{<!-- -->{firma}<!-- -->}</code>
+                    </div>
+                    
+                    <div class="editor-buttons">
+                        <button class="btn btn-primary" onclick="saveTemplate()">💾 Speichern</button>
+                        <button class="btn btn-secondary" onclick="resetTemplate()">↺ Zurücksetzen</button>
+                    </div>
+                    <div id="editor-status" style="margin-top:12px; display:none; padding: 10px; border-radius: 6px; font-size: 13px;"></div>
+                </div>
+
+                <!-- Preview (rechts) -->
+                <div class="preview-section" id="preview-panel">
+                    <h3>📧 E-Mail Vorschau</h3>
+                    
+                    <!-- Warning if using sample data -->
+                    <div id="no-data-warning" class="no-data-message" style="display: none; margin-bottom: 16px;">
+                        <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: #f59e0b; flex-shrink: 0;">
+                            <path d="M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/>
+                        </svg>
+                        <div>
+                            <strong>Vorschau mit Beispieldaten</strong><br>
+                            Laden Sie Zeitdaten auf der Hauptseite, um die tatsächlichen Daten zu sehen.
+                        </div>
+                    </div>
+                    
+                    <div class="preview-frame">
+                        <div class="preview-header">
+                            <span><strong>Von:</strong> <span id="preview-from">noreply@mctime.com</span></span>
+                            <span><strong>An:</strong> <span id="preview-to">mitarbeiter@example.com</span></span>
+                            <span><strong>Betreff:</strong> <span id="preview-subject">Zeiterfassung</span></span>
+                        </div>
+                        
+                        <div class="preview-content">
+                            <h2 id="preview-title">Zeiterfassung</h2>
+                            
+                            <div id="preview-meta">
+                                <p><strong>Mitarbeiter:</strong> <span id="meta-employee">-</span></p>
+                                <p><strong>Firma:</strong> <span id="meta-company">-</span></p>
+                                <p><strong>Zeitraum:</strong> <span id="meta-period">-</span></p>
+                                <p><strong>Gesamte Arbeitsstunden:</strong> <span id="meta-hours">-</span></p>
+                            </div>
+
+                            <h3 style="font-size: 14px; margin: 24px 0 12px 0;">Detaillierte Aufstellung:</h3>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Datum</th>
+                                        <th>Projekt</th>
+                                        <th>Arbeitszeit</th>
+                                        <th>Pausen</th>
+                                        <th>Stunden</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="preview-table-body">
+                                    <tr>
+                                        <td colspan="5" style="text-align: center; color: #6b7280;">Keine Daten geladen</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div id="preview-footer" style="margin-top: 28px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 13px;">
+                                <p>Diese E-Mail wurde automatisch vom McTime System generiert.</p>
+                                <p>Bei Fragen wenden Sie sich bitte an Ihren Vorgesetzten.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="btn-group">
+                        <a href="/" class="btn btn-primary">
+                            <svg class="icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                                <path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"/>
+                            </svg>
+                            Zurück zur Übersicht
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        async function saveTemplate() {
+            const payload = {
+                subject: document.getElementById('email-subject').value,
+                header: document.getElementById('email-header').value,
+                intro: document.getElementById('email-intro').value,
+                footer: document.getElementById('email-footer').value
+            };
+            try {
+                const res = await fetch('/api/email-template', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const j = await res.json();
+                const st = document.getElementById('editor-status');
+                st.style.display = 'block';
+                st.style.color = j.status === 'success' ? '#065f46' : '#991b1b';
+                st.textContent = j.status === 'success' ? 'Vorlage gespeichert.' : ('Fehler: ' + (j.message || ''));
+                setTimeout(()=> st.style.display = 'none', 2500);
+            } catch (e) {
+                console.error('Save failed', e);
+            }
+        }
+
+        function resetTemplate() {
+            if (!confirm('Vorlage auf Standard zurücksetzen?')) return;
+            document.getElementById('email-subject').value = 'Zeiterfassung für {{mitarbeiter_name}} ({{von}} bis {{bis}})';
+            document.getElementById('email-header').value = 'Zeiterfassung - {{mitarbeiter_name}}';
+            document.getElementById('email-intro').value = 'Anbei finden Sie die Zeiterfassung für den Zeitraum {{von}} bis {{bis}}.\n\nGesamtanzahl Einträge: {{anzahl_eintraege}}\nGesamte Arbeitsstunden: {{gesamt_stunden}}h';
+            document.getElementById('email-footer').value = 'Diese E-Mail wurde automatisch vom McTime System generiert.\n\nBei Fragen wenden Sie sich bitte an Ihren Vorgesetzten.';
+            const previewDataStr = sessionStorage.getItem('emailPreviewData');
+            const previewData = previewDataStr ? JSON.parse(previewDataStr) : null;
+            updatePreviewFromTemplate(previewData);
+        }
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Load saved template from backend and populate editor
+            async function loadSavedTemplate() {
+                try {
+                    const res = await fetch('/api/email-template');
+                    const j = await res.json();
+                    if (j.status === 'success' && j.template) {
+                        const t = j.template;
+                        document.getElementById('email-subject').value = t.subject || '';
+                        document.getElementById('email-header').value = t.header || '';
+                        document.getElementById('email-intro').value = t.intro || '';
+                        document.getElementById('email-footer').value = t.footer || '';
+                    }
+                } catch (e) {
+                    console.error('Failed to load saved template', e);
+                }
+            }
+
+            function replacePlaceholders(text, previewData) {
+                if (!text) return '';
+                let result = text;
+                const sample = {
+                    mitarbeiter_name: previewData?.employeeName || 'Max Mustermann',
+                    von: previewData?.dateFrom || '01.12.2025',
+                    bis: previewData?.dateTo || '31.12.2025',
+                    anzahl_eintraege: (previewData?.timeEntries || []).length,
+                    gesamt_stunden: ((previewData?.timeEntries || []).reduce((s,e)=> s + (e.actual_work_hours||0),0)).toFixed(2),
+                    firma: previewData?.company || 'Beispiel GmbH'
+                };
+
+                for (const k in sample) {
+                    // Use string concat to avoid Jinja parsing issues
+                    const pattern = '{' + '{' + '\\s*' + k + '\\s*' + '}' + '}';
+                    const re = new RegExp(pattern, 'g');
+                    result = result.replace(re, sample[k]);
+                }
+                return result.replace(/\n/g, '<br>');
+            }
+
+            function updatePreviewFromTemplate(previewData) {
+                // Use default sample data if no preview data available
+                const defaultData = {
+                    employeeName: 'Max Mustermann',
+                    employeeEmail: 'max.mustermann@beispiel.at',
+                    company: 'Beispiel GmbH',
+                    dateFrom: '01.01.2025',
+                    dateTo: '31.01.2025',
+                    timeEntries: [
+                        {
+                            date_formatted: '02.01.2025',
+                            project: 'Beispiel Projekt',
+                            time_formatted: '08:00-16:30',
+                            breaks_formatted: '12:00-12:30 (0.5h)',
+                            actual_work_hours: 8.0
+                        },
+                        {
+                            date_formatted: '03.01.2025',
+                            project: 'Beispiel Projekt',
+                            time_formatted: '09:00-17:00',
+                            breaks_formatted: '12:30-13:00 (0.5h)',
+                            actual_work_hours: 7.5
+                        }
+                    ]
+                };
+
+                // Merge with defaults - use provided data or fall back to defaults
+                const data = previewData ? {
+                    employeeName: previewData.employeeName || defaultData.employeeName,
+                    employeeEmail: previewData.employeeEmail || defaultData.employeeEmail,
+                    company: previewData.company || defaultData.company,
+                    dateFrom: previewData.dateFrom || defaultData.dateFrom,
+                    dateTo: previewData.dateTo || defaultData.dateTo,
+                    timeEntries: (previewData.timeEntries && previewData.timeEntries.length > 0) ? previewData.timeEntries : defaultData.timeEntries
+                } : defaultData;
+
+                const subjectTpl = document.getElementById('email-subject').value;
+                const headerTpl = document.getElementById('email-header').value;
+                const introTpl = document.getElementById('email-intro').value;
+                const footerTpl = document.getElementById('email-footer').value;
+
+                const previewSubject = replacePlaceholders(subjectTpl, data);
+                const previewHeader = replacePlaceholders(headerTpl, data);
+                const previewIntro = replacePlaceholders(introTpl, data);
+                const previewFooter = replacePlaceholders(footerTpl, data);
+
+                document.getElementById('preview-subject').textContent = previewSubject.replace(/<br>/g, ' ');
+                document.getElementById('preview-title').textContent = previewHeader.replace(/<br>/g, ' ');
+                document.getElementById('preview-footer').innerHTML = previewFooter;
+
+                // Update To field with employee email from API data
+                const totalHours = (data.timeEntries || []).reduce((s,e)=> s + (e.actual_work_hours||0),0);
+                document.getElementById('preview-to').textContent = data.employeeEmail;
+
+                document.getElementById('meta-employee').textContent = data.employeeName;
+                document.getElementById('meta-company').textContent = data.company;
+                document.getElementById('meta-period').textContent = `${data.dateFrom} bis ${data.dateTo}`;
+                document.getElementById('meta-hours').textContent = totalHours.toFixed(2) + 'h';
+
+                // Show info message if using sample data
+                const isUsingDefaults = !previewData || !previewData.timeEntries || previewData.timeEntries.length === 0;
+                document.getElementById('no-data-warning').style.display = isUsingDefaults ? 'flex' : 'none';
+
+                // table
+                const tbody = document.getElementById('preview-table-body');
+                tbody.innerHTML = '';
+                const entries = data.timeEntries || [];
+
+                entries.forEach(entry => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${entry.date_formatted || '-'}</td>
+                        <td>${entry.project || entry.organizationName || '-'}</td>
+                        <td>${entry.time_formatted || '-'}</td>
+                        <td>${entry.breaks_formatted || '-'}</td>
+                        <td>${entry.actual_work_hours ? entry.actual_work_hours.toFixed(2) + 'h' : '-'}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            // Hook inputs to update preview live
+            ['email-subject','email-header','email-intro','email-footer'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('input', () => {
+                    const previewDataStr = sessionStorage.getItem('emailPreviewData');
+                    const previewData = previewDataStr ? JSON.parse(previewDataStr) : null;
+                    updatePreviewFromTemplate(previewData);
+                });
+            });
+
+            await loadSavedTemplate();
+
+            // If there is preview data from main page, use it
+            const previewDataStr = sessionStorage.getItem('emailPreviewData');
+            const previewData = previewDataStr ? JSON.parse(previewDataStr) : null;
+            updatePreviewFromTemplate(previewData);
+        });
+    </script>
+</body>
+</html>
