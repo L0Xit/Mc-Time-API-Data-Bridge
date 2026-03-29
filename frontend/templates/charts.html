@@ -2294,9 +2294,7 @@
             // Default: Monat-Filter ist aktiv
             updateFilterUI('month');
 
-            // Lade die Daten für den aktuellen Monat
-            console.log(`Lade Standard-Daten für: ${defaultMonthValue}`);
-            loadChartData('month', defaultMonthValue, null, null, defaultMonthLabel);
+            // NICHT automatisch laden - Benutzer soll erst Filter wählen und klicken
         });
     </script>
 </body>
