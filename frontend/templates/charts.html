@@ -2173,48 +2173,48 @@
         
         // Beim Laden der Seite
         document.addEventListener('DOMContentLoaded', function() {
-            // Setze den Standardmonat auf den letzten bekannten Datenpunkt
-            const defaultYear = 2025;
-            const defaultMonth = 12; // Dezember
+            // Dynamisch: Aktuellen Monat als Standard verwenden
+            const now = new Date();
+            const defaultYear = now.getFullYear();
+            const defaultMonth = now.getMonth() + 1; // 1-basiert
             const defaultMonthValue = `${defaultYear}-${String(defaultMonth).padStart(2, '0')}`;
+            const defaultMonthLabel = `${germanMonths[defaultMonth - 1]} ${defaultYear}`;
 
             populateMonthDropdown(defaultYear, defaultMonth - 1);
             initCharts();
-            
+
             // Quartal-Jahr Dropdown füllen
             const quarterYearSelect = document.getElementById('quarterYearSelect');
-            const currentYear = new Date().getFullYear();
+            const currentYear = now.getFullYear();
             quarterYearSelect.innerHTML = '';
             for (let year = currentYear; year >= 2025; year--) {
                 const option = document.createElement('option');
                 option.value = year;
                 option.textContent = year;
-                // Setze das Standardjahr
                 if (year === defaultYear) option.selected = true;
                 quarterYearSelect.appendChild(option);
             }
-            
-            // Aktuelles Quartal ermitteln und auswählen (basierend auf Default-Datum)
-            const defaultDate = new Date(defaultYear, defaultMonth - 1);
-            const currentQuarter = Math.floor((defaultDate.getMonth() / 3)) + 1;
+
+            // Aktuelles Quartal ermitteln und auswählen
+            const currentQuarter = Math.floor((now.getMonth() / 3)) + 1;
             document.querySelectorAll('.quarter-btn').forEach(btn => {
                 btn.classList.remove('active');
                 if (parseInt(btn.dataset.quarter) === currentQuarter) {
                     btn.classList.add('active');
                 }
             });
-            
+
             // Custom Date Range mit sinnvollen Werten initialisieren
             const lastDayOfMonth = new Date(defaultYear, defaultMonth, 0);
             document.getElementById('customDateFrom').value = `${defaultYear}-${String(defaultMonth).padStart(2, '0')}-01`;
             document.getElementById('customDateTo').value = lastDayOfMonth.toISOString().split('T')[0];
-            
+
             // Default: Monat-Filter ist aktiv
             updateFilterUI('month');
-            
-            // Lade die Daten für den Standardmonat (Dezember 2025)
+
+            // Lade die Daten für den aktuellen Monat
             console.log(`Lade Standard-Daten für: ${defaultMonthValue}`);
-            loadChartData('month', defaultMonthValue, null, null, `Dezember 2025`);
+            loadChartData('month', defaultMonthValue, null, null, defaultMonthLabel);
         });
     </script>
 </body>

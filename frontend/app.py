@@ -9,6 +9,7 @@ from functools import lru_cache
 import hashlib
 import json
 import logging
+from datetime import datetime, timedelta
 
 # Configure logging to handle UTF-8
 logging.basicConfig(level=logging.INFO, format='[%(name)s] %(message)s')
@@ -30,6 +31,8 @@ from middleware.core import Middleware, get_middleware
 from backend.api_handler import BackendService
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 # ==================== HYBRID ARCHITEKTUR ====================
 # Frontend → Middleware → Backend → McTime API
@@ -273,6 +276,15 @@ def system_status():
     }
     return jsonify(status)
 
+@app.route('/api/cache/clear', methods=['POST'])
+def clear_api_cache():
+    """Leert den Anwendungs-Cache"""
+    global _cache
+    print("=== CACHE CLEAR CALLED ===")
+    _cache = {}
+    logger.info("Cache wurde manuell geleert.")
+    return jsonify({"status": "success", "message": "Cache erfolgreich geleert."})
+
 @app.route('/api/middleware/ping')
 def ping_middleware():
     """Testet die Verbindung zur Middleware/McTime API"""
@@ -293,8 +305,8 @@ def middleware_stats():
 @app.route('/api/stats/reset', methods=['POST'])
 def reset_stats():
     """Setzt die Request-Statistiken und den Cache zurück"""
-    global _request_stats, _cache
-    print("=== RESET STATS & CACHE CALLED ===")
+    global _request_stats
+    print("=== RESET STATS CALLED ===")
     
     # Reset Request-Statistiken
     _request_stats = {
@@ -305,15 +317,11 @@ def reset_stats():
         "start_time": time.time()
     }
     
-    # Reset Cache komplett
-    _cache = {}
-    
     print(f"[OK] Stats nach Reset: {_request_stats}")
-    print(f"[OK] Cache geleert!")
     
     return jsonify({
         "status": "success", 
-        "message": "Statistiken und Cache vollständig zurückgesetzt",
+        "message": "Statistiken erfolgreich zurückgesetzt",
         "stats": _request_stats
     })
 
@@ -551,24 +559,6 @@ def get_organizations():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/api/cache/clear', methods=['POST'])
-def api_clear_cache():
-    """Cache manuell leeren für frische Daten"""
-    clear_cache()
-    return jsonify({"status": "success", "message": "Cache geleert"})
-
-
-@app.route('/api/cache/status')
-def api_cache_status():
-    """Zeigt Cache-Status"""
-    entries = len(_cache)
-    return jsonify({
-        "entries": entries,
-        "ttl_seconds": _cache_ttl,
-        "keys": list(_cache.keys())[:20]  # Max 20 Keys anzeigen
-    })
-
-
 @app.route('/api/test', methods=['GET'])
 def api_test():
     """Einfacher Test-Endpoint"""
@@ -576,376 +566,255 @@ def api_test():
 
 @app.route('/api/chart-stats')
 def get_chart_stats():
-    """
-    Holt aggregierte Statistiken für Charts
-    
-    Query-Parameter:
-    - filter: 'month' | 'year' | 'alltime' | 'custom' (default: 'month')
-    - month: 'YYYY-MM' Format für spezifischen Monat (nur wenn filter='month')
-    - from: 'YYYY-MM-DD' Format für Start-Datum (nur wenn filter='custom')
-    - to: 'YYYY-MM-DD' Format für End-Datum (nur wenn filter='custom')
-    
-    Gibt zurück: Statistiken für alle Mitarbeiter im gewählten Zeitraum
-    """
-    from datetime import datetime, timedelta
-    from collections import defaultdict
-    import calendar
-    
-    # Deutsche Monatsnamen
-    german_months = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 
-                     'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
-    
-    if not backend_service and not middleware:
-        return jsonify({"error": "Kein Service verfügbar"}), 500
-    
-    # Filter auswerten
-    time_filter = request.args.get('filter', 'month')
-    month_param = request.args.get('month', None)  # YYYY-MM Format
-    custom_from = request.args.get('from', None)  # YYYY-MM-DD Format
-    custom_to = request.args.get('to', None)      # YYYY-MM-DD Format
-    
-    today = datetime.now()
-    
-    # Hilfsfunktion: Monatsbereiche generieren
-    def generate_month_ranges(start_date, end_date):
-        """Generiert eine Liste von (start, end) Tuples für jeden Monat im Bereich"""
-        ranges = []
-        current = start_date.replace(day=1)
-        while current <= end_date:
-            month_start = current.strftime('%Y-%m-%d')
-            # Letzter Tag des Monats
-            last_day = calendar.monthrange(current.year, current.month)[1]
-            month_end_date = current.replace(day=last_day)
-            if month_end_date > end_date:
-                month_end_date = end_date
-            month_end = month_end_date.strftime('%Y-%m-%d')
-            ranges.append((month_start, month_end))
-            
-            # Nächster Monat
-            if current.month == 12:
-                current = current.replace(year=current.year + 1, month=1)
-            else:
-                current = current.replace(month=current.month + 1)
-        return ranges
-    
-    # Datumsbereich basierend auf Filter berechnen
-    if time_filter == 'month':
-        if month_param:
-            # Spezifischer Monat aus Parameter
-            try:
-                year, month = map(int, month_param.split('-'))
-                target_date = datetime(year, month, 1)
-                date_from = target_date.strftime('%Y-%m-%d')
-                last_day = calendar.monthrange(year, month)[1]
-                date_to = target_date.replace(day=last_day).strftime('%Y-%m-%d')
-                filter_label = f"{german_months[month-1]} {year}"
-            except:
-                # Fallback auf aktuellen Monat
-                date_from = today.replace(day=1).strftime('%Y-%m-%d')
-                last_day = calendar.monthrange(today.year, today.month)[1]
-                date_to = today.replace(day=last_day).strftime('%Y-%m-%d')
-                filter_label = f"{german_months[today.month-1]} {today.year}"
-        else:
-            # Aktueller Monat
-            date_from = today.replace(day=1).strftime('%Y-%m-%d')
-            last_day = calendar.monthrange(today.year, today.month)[1]
-            date_to = today.replace(day=last_day).strftime('%Y-%m-%d')
-            filter_label = f"{german_months[today.month-1]} {today.year}"
-        month_ranges = [(date_from, date_to)]  # Nur ein Monat
-        
-    elif time_filter == 'custom':
-        # Benutzerdefinierter Datumsbereich
-        if not custom_from or not custom_to:
-            print("[WARNING] Custom Filter ohne Datumsangaben - Fallback auf aktuellen Monat")
-            # Fallback auf aktuellen Monat
-            date_from = today.replace(day=1).strftime('%Y-%m-%d')
-            last_day = calendar.monthrange(today.year, today.month)[1]
-            date_to = today.replace(day=last_day).strftime('%Y-%m-%d')
-            filter_label = f"{german_months[today.month-1]} {today.year}"
-            month_ranges = [(date_from, date_to)]
-        else:
-            try:
-                from_date = datetime.strptime(custom_from, '%Y-%m-%d')
-                to_date = datetime.strptime(custom_to, '%Y-%m-%d')
-                date_from = custom_from
-                date_to = custom_to
-                # Format: "01. Jan - 31. Dez 2025"
-                from_label = from_date.strftime('%d.%m.%Y')
-                to_label = to_date.strftime('%d.%m.%Y')
-                filter_label = f"{from_label} bis {to_label}"
-                print(f"[OK] Custom Filter: {date_from} bis {date_to}")
-                
-                # Monats-Bereiche aus dem benutzerdefinierten Bereich generieren
-                month_ranges = generate_month_ranges(from_date, to_date)
-            except Exception as e:
-                print(f"[ERROR] Fehler beim Parsen von Custom-Daten: {e}")
-                # Fallback
-                date_from = today.replace(day=1).strftime('%Y-%m-%d')
-                last_day = calendar.monthrange(today.year, today.month)[1]
-                date_to = today.replace(day=last_day).strftime('%Y-%m-%d')
-                filter_label = f"{german_months[today.month-1]} {today.year}"
-                month_ranges = [(date_from, date_to)]
-        
-    elif time_filter == 'year':
-        # Aktuelles Jahr - Monat für Monat abrufen (API-Limit umgehen)
-        start_date = datetime(today.year, 1, 1)
-        end_date = today
-        date_from = start_date.strftime('%Y-%m-%d')
-        date_to = end_date.strftime('%Y-%m-%d')
-        filter_label = f"Jahr {today.year}"
-        month_ranges = generate_month_ranges(start_date, end_date)
-        
-    else:  # alltime - September 2025 bis heute
-        start_date = datetime(2025, 9, 1)
-        end_date = today
-        date_from = start_date.strftime('%Y-%m-%d')
-        date_to = end_date.strftime('%Y-%m-%d')
-        filter_label = "Alle Daten (ab Sep 2025)"
-        month_ranges = generate_month_ranges(start_date, end_date)
-    
+    """Gibt aggregierte Chart-Daten basierend auf Filtertyp zurück"""
+    filter_type = request.args.get('filter', 'month')
+    month_str = request.args.get('month')       # Format: YYYY-MM (z.B. "2025-12")
+    from_date_str = request.args.get('from')     # Format: YYYY-MM-DD
+    to_date_str = request.args.get('to')         # Format: YYYY-MM-DD
+
+    logger.info(f"Chart-Stats: filter={filter_type}, month={month_str}, from={from_date_str}, to={to_date_str}")
+
     try:
-        # Cache-Key für diese Anfrage
-        cache_key = get_cache_key('chart_stats', filter=time_filter, month=month_param, date_from=date_from, date_to=date_to)
-        cached_result = get_cached(cache_key)
-        if cached_result:
-            print(f"[CACHE] Chart-Stats aus Cache geladen!")
-            return jsonify(cached_result)
-        
-        start_time = time.time()
-        
-        # Alle Mitarbeiter holen
-        if backend_service:
-            employees = backend_service.get_form_data().get('employees', [])
-        elif middleware:
+        # Bestimme den Datumsbereich
+        if filter_type == 'custom' and from_date_str and to_date_str:
+            date_from = datetime.strptime(from_date_str, '%Y-%m-%d')
+            date_to = datetime.strptime(to_date_str, '%Y-%m-%d')
+        elif filter_type == 'month' and month_str:
+            # month_str = "2025-12" -> Anfang und Ende des Monats
+            try:
+                year, month = map(int, month_str.split('-'))
+                date_from = datetime(year, month, 1)
+                if month == 12:
+                    date_to = datetime(year, 12, 31)
+                else:
+                    date_to = datetime(year, month + 1, 1) - timedelta(days=1)
+                logger.info(f"Month filter: {month_str} -> {date_from.strftime('%Y-%m-%d')} to {date_to.strftime('%Y-%m-%d')}")
+            except ValueError:
+                logger.error(f"Invalid month format: {month_str}")
+                # Fallback to current month
+                now = datetime.now()
+                date_from = now.replace(day=1)
+                next_month = (now.replace(day=28) + timedelta(days=4)).replace(day=1)
+                date_to = next_month - timedelta(days=1)
+        elif month_str and not filter_type:
+            # Handle case where month is sent without explicit filter_type
+            try:
+                year, month = map(int, month_str.split('-'))
+                date_from = datetime(year, month, 1)
+                if month == 12:
+                    date_to = datetime(year, 12, 31)
+                else:
+                    date_to = datetime(year, month + 1, 1) - timedelta(days=1)
+                filter_type = 'month'  # Set filter_type for proper labeling
+                logger.info(f"Auto-detected month filter: {month_str} -> {date_from.strftime('%Y-%m-%d')} to {date_to.strftime('%Y-%m-%d')}")
+            except ValueError:
+                logger.error(f"Invalid month format in auto-detect: {month_str}")
+                # Fallback to current month
+                now = datetime.now()
+                date_from = now.replace(day=1)
+                next_month = (now.replace(day=28) + timedelta(days=4)).replace(day=1)
+                date_to = next_month - timedelta(days=1)
+        else:
+            now = datetime.now()
+            if filter_type == 'year':
+                date_from = now.replace(month=1, day=1)
+                date_to = now.replace(month=12, day=31)
+            elif filter_type == 'alltime':
+                date_from = datetime(2025, 9, 1)
+                date_to = now
+            elif filter_type == 'quarter':
+                current_quarter = (now.month - 1) // 3 + 1
+                first_month = 3 * current_quarter - 2
+                last_month = 3 * current_quarter
+                date_from = now.replace(month=first_month, day=1)
+                if last_month == 12:
+                    next_month = datetime(now.year + 1, 1, 1)
+                else:
+                    next_month = now.replace(month=last_month + 1, day=1)
+                date_to = next_month - timedelta(days=1)
+            else:  # default to 'month' (aktueller Monat)
+                date_from = now.replace(day=1)
+                next_month = (now.replace(day=28) + timedelta(days=4)).replace(day=1)
+                date_to = next_month - timedelta(days=1)
+
+        date_from_api = date_from.strftime('%d.%m.%Y')
+        date_to_api = date_to.strftime('%d.%m.%Y')
+
+        logger.info(f"Date range: {date_from_api} to {date_to_api}")
+
+        if not middleware:
+            raise Exception("Middleware nicht verfügbar")
+
+        # Versuche Daten über Backend zu aggregieren
+        try:
+            # Hole alle Mitarbeiter
             employees = middleware.get_employees()
-        else:
-            employees = []
-        
-        print(f"[CHART-STATS] {len(employees)} Mitarbeiter, {len(month_ranges)} Monats-Bereiche", file=sys.stderr)
-        
-        # Statistiken sammeln
-        total_hours = 0.0
-        employee_stats = []
-        weekday_hours = defaultdict(float)  # 0=Mo, 1=Di, ..., 6=So
-        monthly_hours = defaultdict(float)  # "2024-09", "2024-10", etc.
-        daily_hours = defaultdict(float)    # "2024-09-01", "2024-09-02", etc.
-        all_time_entries = []
-        
-        # ==================== PARALLELE VERARBEITUNG ====================
-        def fetch_employee_data(emp):
-            """Holt Daten für einen Mitarbeiter (wird parallel ausgeführt)"""
-            emp_id = emp.get('id') or emp.get('value')
-            emp_name = emp.get('name') or emp.get('label', 'Unbekannt')
-            
-            if not emp_id:
-                return None
-            
-            # Cache für einzelne Mitarbeiter
-            emp_cache_key = get_cache_key('emp_data', emp_id=emp_id, date_from=date_from, date_to=date_to)
-            cached_emp = get_cached(emp_cache_key)
-            if cached_emp:
-                return cached_emp
-            
-            time_entries = []
-            for m_start, m_end in month_ranges:
+
+            daily_hours = {}
+            employee_hours = {}
+            project_hours = {}
+            weekday_hours = [0, 0, 0, 0, 0, 0, 0]  # Mo-So
+            total_hours = 0
+            total_entries = 0
+            employee_names_full = []
+
+            # Sammle Daten von allen Mitarbeitern
+            for emp in employees:
+                emp_id = emp.get('id') or emp.get('employee_id')
+                emp_name = emp.get('name') or emp.get('employee_name') or emp.get('first_name', '')
+
+                if not emp_id:
+                    continue
+
                 try:
-                    if backend_service:
-                        entries = backend_service.mctime_api.get_time_entries(
-                            employee_id=emp_id,
-                            date_from=m_start,
-                            date_to=m_end
-                        )
-                    elif middleware:
-                        entries = middleware.get_time_entries(
-                            employee_id=emp_id,
-                            date_from=m_start,
-                            date_to=m_end
-                        )
-                    else:
-                        entries = []
-                    time_entries.extend(entries)
+                    # Hole Zeit-Einträge für diesen Mitarbeiter
+                    time_entries = middleware.get_time_entries(
+                        employee_id=emp_id,
+                        date_from=date_from_api,
+                        date_to=date_to_api
+                    )
+
+                    if time_entries:
+                        total_entries += len(time_entries)
+                        # Aggregiere für Mitarbeiter
+                        emp_total = 0
+                        for entry in time_entries:
+                            hours = entry.get('hours', 0)
+                            if isinstance(hours, str):
+                                try:
+                                    hours = float(hours.replace(',', '.'))
+                                except (ValueError, AttributeError):
+                                    hours = 0
+
+                            emp_total += hours
+
+                            # Tägliche Aggregation
+                            date_key = entry.get('date', 'unknown')
+                            if date_key not in daily_hours:
+                                daily_hours[date_key] = 0
+                            daily_hours[date_key] += hours
+
+                            # Wochentag-Aggregation
+                            try:
+                                date_formatted = entry.get('date_formatted', '')
+                                if date_formatted:
+                                    # Format: "DD.MM.YY" oder "DD.MM.YYYY"
+                                    parts = date_formatted.split('.')
+                                    if len(parts) == 3:
+                                        day_val = int(parts[0])
+                                        month_val = int(parts[1])
+                                        year_val = int(parts[2])
+                                        if year_val < 100:
+                                            year_val += 2000
+                                        dt = datetime(year_val, month_val, day_val)
+                                        weekday_idx = dt.weekday()  # 0=Mo, 6=So
+                                        weekday_hours[weekday_idx] += hours
+                            except (ValueError, IndexError):
+                                pass
+
+                            # Projekt-Aggregation
+                            project = entry.get('project', '') or 'Sonstiges'
+                            if project not in project_hours:
+                                project_hours[project] = 0
+                            project_hours[project] += hours
+
+                        if emp_total > 0:
+                            employee_hours[emp_name or emp_id] = emp_total
+                            employee_names_full.append(emp_name or emp_id)
+                            total_hours += emp_total
+
                 except Exception as e:
+                    logger.warning(f"Fehler bei Mitarbeiter {emp_id}: {e}")
                     continue
-            
-            result = {
-                'emp_id': emp_id,
-                'emp_name': emp_name,
-                'time_entries': time_entries
+
+            # Sortierte Mitarbeiter-Daten (Top 10)
+            sorted_employees = sorted(employee_hours.items(), key=lambda x: x[1], reverse=True)
+            top_employees = sorted_employees[:10]
+
+            # Sortierte Projekt-Daten
+            sorted_projects = sorted(project_hours.items(), key=lambda x: x[1], reverse=True)
+
+            # Monatstrend - tägliche Stunden nach Datum sortiert
+            sorted_daily = sorted(daily_hours.items())
+
+            # Berechne KPIs
+            active_employees = len([e for e in sorted_employees if e[1] > 0])
+            avg_hours = round(total_hours / active_employees, 1) if active_employees > 0 else 0
+
+            # Wochentag-Stunden runden
+            weekday_hours = [round(h, 1) for h in weekday_hours]
+
+            # Filter-Label für bessere Anzeige
+            if filter_type == 'month' and month_str:
+                # Konvertiere "2025-12" zu "Dezember 2025"
+                try:
+                    year, month = map(int, month_str.split('-'))
+                    german_months = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+                                   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
+                    filter_label = f"{german_months[month-1]} {year}"
+                except (ValueError, IndexError):
+                    filter_label = f"{date_from.strftime('%d.%m.%Y')} - {date_to.strftime('%d.%m.%Y')}"
+            else:
+                filter_label = f"{date_from.strftime('%d.%m.%Y')} - {date_to.strftime('%d.%m.%Y')}"
+
+            response_data = {
+                "status": "success",
+                "filter": filter_type,
+                "filter_label": filter_label,
+                # KPI-Daten im erwarteten Format
+                "kpi": {
+                    "total_hours": round(total_hours, 2),
+                    "employee_count": active_employees,
+                    "entry_count": total_entries,
+                    "avg_hours_per_employee": avg_hours
+                },
+                # Wochentag-Daten (Mo-So)
+                "weekday_data": {
+                    "values": weekday_hours
+                },
+                # Projekt-Daten
+                "project_data": {
+                    "labels": [p[0] for p in sorted_projects[:5]],
+                    "values": [round(p[1], 2) for p in sorted_projects[:5]]
+                },
+                # Monatstrend (tägliche Daten)
+                "monthly_data": {
+                    "labels": [d[0] for d in sorted_daily],
+                    "values": [round(d[1], 2) for d in sorted_daily]
+                },
+                # Mitarbeiter-Ranking
+                "employee_data": {
+                    "labels": [e[0].split(' ')[0] if ' ' in e[0] else e[0] for e in top_employees],
+                    "values": [round(e[1], 2) for e in top_employees],
+                    "full_names": employee_names_full,
+                    "total_count": len(sorted_employees),
+                    "showing": len(top_employees)
+                }
             }
-            
-            # Ergebnis cachen
-            set_cached(emp_cache_key, result)
-            return result
-        
-        # Parallel ausführen mit ThreadPool (max 10 gleichzeitige Anfragen)
-        max_workers = min(10, len(employees))  # Max 10 parallel, nicht mehr als MA-Anzahl
-        
-        print(f"[PARALLEL] Starte parallele Verarbeitung mit {max_workers} Workers...")
-        
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # Alle Jobs einreichen
-            future_to_emp = {executor.submit(fetch_employee_data, emp): emp for emp in employees}
-            
-            completed = 0
-            for future in as_completed(future_to_emp):
-                completed += 1
-                result = future.result()
-                
-                if not result:
-                    continue
-                
-                emp_name = result['emp_name']
-                time_entries = result['time_entries']
-                
-                # Progress (alle 10 MA)
-                if completed % 10 == 0:
-                    elapsed = time.time() - start_time
-                    print(f"  [PROGRESS] {completed}/{len(employees)} Mitarbeiter verarbeitet ({elapsed:.1f}s)", file=sys.stderr)
-                
-                emp_total = 0.0
-                for entry in time_entries:
-                    work_hours = entry.get('actual_work_hours', 0) or 0
-                    emp_total += work_hours
-                    
-                    # Wochentag-Statistik und Tages-Statistik
-                    try:
-                        from_date = entry.get('from', '')
-                        if from_date:
-                            dt = datetime.fromisoformat(from_date.replace('Z', '+00:00'))
-                            weekday_hours[dt.weekday()] += work_hours
-                            
-                            # Monats-Statistik
-                            month_key = dt.strftime('%Y-%m')
-                            monthly_hours[month_key] += work_hours
-                            
-                            # Tages-Statistik
-                            day_key = dt.strftime('%Y-%m-%d')
-                            daily_hours[day_key] += work_hours
-                    except:
-                        pass
-                    
-                    # Projekt aus comment extrahieren
-                    comment = entry.get('comment', '') or ''
-                    comment = comment.strip()
-                    if comment:
-                        project_name = comment.replace('\n', '').strip()
-                    else:
-                        project_name = entry.get('organizationName', 'Sonstiges') or 'Sonstiges'
-                    
-                    all_time_entries.append({
-                        'name': emp_name,
-                        'hours': work_hours,
-                        'date': entry.get('date_formatted', ''),
-                        'project': project_name
-                    })
-                
-                total_hours += emp_total
-                
-                if emp_total > 0:
-                    employee_stats.append({
-                        'name': emp_name,
-                        'hours': round(emp_total, 2),
-                        'entries': len(time_entries)
-                    })
-        
-        elapsed_total = time.time() - start_time
-        print(f"[OK] Alle {len(employees)} Mitarbeiter in {elapsed_total:.1f}s verarbeitet!")
-        
-        # Wochentage formatieren
-        weekday_data = [
-            round(weekday_hours.get(0, 0), 1),  # Mo
-            round(weekday_hours.get(1, 0), 1),  # Di
-            round(weekday_hours.get(2, 0), 1),  # Mi
-            round(weekday_hours.get(3, 0), 1),  # Do
-            round(weekday_hours.get(4, 0), 1),  # Fr
-            round(weekday_hours.get(5, 0), 1),  # Sa
-            round(weekday_hours.get(6, 0), 1),  # So
-        ]
-        
-        # Trend-Daten: Bei einzelnem Monat -> Tage anzeigen, sonst -> Monate
-        trend_labels = []
-        trend_values = []
-        
-        german_months_short = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 
-                               'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
-        
-        if time_filter == 'month' or len(monthly_hours) == 1:
-            # Einzelner Monat: Zeige tägliche Daten
-            sorted_days = sorted(daily_hours.keys())
-            for day_key in sorted_days:
-                # Format: "01", "02", etc.
-                day_num = day_key.split('-')[2]
-                trend_labels.append(day_num)
-                trend_values.append(round(daily_hours[day_key], 1))
-        else:
-            # Mehrere Monate: Zeige monatliche Daten
-            sorted_months = sorted(monthly_hours.keys())
-            for month_key in sorted_months:
-                year, month = month_key.split('-')
-                month_idx = int(month) - 1
-                trend_labels.append(f"{german_months_short[month_idx]} {year[-2:]}")
-                trend_values.append(round(monthly_hours[month_key], 1))
-        
-        # Projekt-Verteilung berechnen
-        project_hours = defaultdict(float)
-        for entry in all_time_entries:
-            project_hours[entry.get('project', 'Sonstiges')] += entry.get('hours', 0)
-        
-        # Top 5 Projekte
-        sorted_projects = sorted(project_hours.items(), key=lambda x: x[1], reverse=True)[:5]
-        project_labels = [p[0] for p in sorted_projects]
-        project_values = [round(p[1], 1) for p in sorted_projects]
-        
-        # Mitarbeiter nach Stunden sortieren - TOP 10 für Ranking
-        employee_stats.sort(key=lambda x: x['hours'], reverse=True)
-        top_employees = employee_stats[:10]  # Nur Top 10 für Chart anzeigen
-        total_employees = len(employee_stats)  # Gesamtzahl merken
-        
-        result = {
-            'status': 'success',
-            'filter': time_filter,
-            'filter_label': filter_label,
-            'date_from': date_from,
-            'date_to': date_to,
-            'kpi': {
-                'total_hours': round(total_hours, 1),
-                'employee_count': len(employee_stats),
-                'entry_count': len(all_time_entries),
-                'avg_hours_per_employee': round(total_hours / len(employee_stats), 1) if employee_stats else 0
-            },
-            'weekday_data': {
-                'labels': ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'],
-                'values': weekday_data
-            },
-            'monthly_data': {
-                'labels': trend_labels,
-                'values': trend_values
-            },
-            'project_data': {
-                'labels': project_labels,
-                'values': project_values
-            },
-            'employee_data': {
-                'labels': [e['name'].split()[0] + ' ' + e['name'].split()[-1][0] + '.' if ' ' in e['name'] else e['name'] for e in top_employees],
-                'values': [e['hours'] for e in top_employees],
-                'full_names': [e['name'] for e in top_employees],
-                'total_count': total_employees,
-                'showing': len(top_employees)
-            }
-        }
-        
-        # Ergebnis cachen für 5 Minuten
-        set_cached(cache_key, result)
-        
-        return jsonify(result)
-        
+
+            logger.info(f"Chart data generated: {len(sorted_daily)} days, {active_employees} employees, {total_entries} entries")
+            return jsonify(response_data)
+
+        except Exception as e:
+            logger.error(f"Fehler bei Datenaggregation: {e}", exc_info=True)
+            # Rückfallwert: Leere Daten mit korrektem Format
+            return jsonify({
+                "status": "success",
+                "filter": filter_type,
+                "filter_label": f"{date_from.strftime('%d.%m.%Y')} - {date_to.strftime('%d.%m.%Y')}",
+                "kpi": {"total_hours": 0, "employee_count": 0, "entry_count": 0, "avg_hours_per_employee": 0},
+                "weekday_data": {"values": [0, 0, 0, 0, 0, 0, 0]},
+                "project_data": {"labels": [], "values": []},
+                "monthly_data": {"labels": [], "values": []},
+                "employee_data": {"labels": [], "values": [], "full_names": [], "total_count": 0, "showing": 0}
+            })
+
     except Exception as e:
-        print(f"Error in chart-stats: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Fehler in get_chart_stats: {e}", exc_info=True)
         return jsonify({
             "status": "error",
-            "message": str(e)
+            "message": str(e),
+            "error": str(e)
         }), 500
 
 
