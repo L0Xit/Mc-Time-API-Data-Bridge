@@ -911,34 +911,39 @@ def send_custom_email():
         print(f"CC Recipients: {email_cc}")
         print(f"Attach CSV: {attach_csv}")
         
-        # Sammle Daten für alle ausgewählten Mitarbeiter
+        # Sammle Daten für alle ausgewählten Mitarbeiter PARALLEL
         all_time_entries = []
         employee_data = []
-        
-        for idx, emp_id in enumerate(employee_ids):
+
+        def fetch_email_entries(idx_emp):
+            idx, emp_id = idx_emp
             emp_name = employee_names[idx] if idx < len(employee_names) else f"Mitarbeiter {idx+1}"
-            
             try:
                 entries = middleware.get_time_entries(
                     employee_id=emp_id,
                     date_from=date_from_normalized,
                     date_to=date_to_normalized
                 )
-                
-                # Füge Name zu jedem Eintrag hinzu
                 for entry in entries:
                     entry['name'] = emp_name
                     entry['employee_id'] = emp_id
-                
+                logger.info(f"  {emp_name}: {len(entries)} Eintraege")
+                return (emp_name, emp_id, entries)
+            except Exception as e:
+                logger.warning(f"  Fehler bei {emp_name}: {e}")
+                return (emp_name, emp_id, [])
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            results = list(executor.map(fetch_email_entries, enumerate(employee_ids)))
+
+        for emp_name, emp_id, entries in results:
+            if entries:
                 all_time_entries.extend(entries)
                 employee_data.append({
                     'id': emp_id,
                     'name': emp_name,
                     'entry_count': len(entries)
                 })
-                print(f"  {emp_name}: {len(entries)} Einträge")
-            except Exception as e:
-                print(f"  Fehler bei {emp_name}: {e}")
         
         if not all_time_entries:
             return jsonify({
