@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vorlagen-Einstellungen - McTime</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .settings-container { max-width: 1000px; margin: 24px auto; }
+        .settings-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        .editor { background: #fff; padding: 18px; border-radius: 10px; border: 1px solid #e6eef6; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display:block; margin-bottom:6px; font-weight:600; }
+        .form-group input, .form-group textarea { width:100%; padding:10px; border-radius:6px; border:1px solid #d1d5db; }
+        .btns { display:flex; gap:12px; margin-top:12px; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo-section">
+                <img src="{{ url_for('static', filename='mctime_logo.png') }}" alt="logo" class="logo">
+                <span class="logo-text">Vorlagen-Einstellungen</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="settings-container">
+            <a href="/" class="back-link">← Zurück</a>
+            <h1>Vorlagen-Einstellungen</h1>
+            <p style="color:#6b7280;">Hier können Sie die Standard-E-Mail-Vorlage bearbeiten und speichern.</p>
+
+            <div class="settings-grid">
+                <div class="editor">
+                    <div class="form-group">
+                        <label for="tpl-subject">Betreff</label>
+                        <input id="tpl-subject" type="text">
+                    </div>
+                    <div class="form-group">
+                        <label for="tpl-header">Überschrift</label>
+                        <input id="tpl-header" type="text">
+                    </div>
+                    <div class="form-group">
+                        <label for="tpl-intro">Einleitung</label>
+                        <textarea id="tpl-intro" rows="6"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="tpl-footer">Fußzeile</label>
+                        <textarea id="tpl-footer" rows="4"></textarea>
+                    </div>
+
+                    <div class="btns">
+                        <button class="btn btn-primary" id="save-btn">Speichern</button>
+                        <button class="btn btn-secondary" id="reset-btn">Zurücksetzen</button>
+                    </div>
+
+                    <div id="status" style="margin-top:12px; display:none;"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        async function loadTemplate() {
+            try {
+                const res = await fetch('/api/email-template');
+                const j = await res.json();
+                if (j.status === 'success' && j.template) {
+                    const t = j.template;
+                    document.getElementById('tpl-subject').value = t.subject || '';
+                    document.getElementById('tpl-header').value = t.header || '';
+                    document.getElementById('tpl-intro').value = t.intro || '';
+                    document.getElementById('tpl-footer').value = t.footer || '';
+                }
+            } catch (e) {
+                console.error('Failed load template', e);
+            }
+        }
+
+        async function saveTemplate() {
+            const payload = {
+                subject: document.getElementById('tpl-subject').value,
+                header: document.getElementById('tpl-header').value,
+                intro: document.getElementById('tpl-intro').value,
+                footer: document.getElementById('tpl-footer').value
+            };
+
+            try {
+                const res = await fetch('/api/email-template', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const j = await res.json();
+                const status = document.getElementById('status');
+                status.style.display = 'block';
+                if (j.status === 'success') {
+                    status.textContent = 'Vorlage gespeichert.';
+                    status.style.color = '#065f46';
+                } else {
+                    status.textContent = 'Fehler beim Speichern: ' + (j.message || '');
+                    status.style.color = '#991b1b';
+                }
+                setTimeout(()=> status.style.display = 'none', 3000);
+            } catch (e) {
+                console.error('Save failed', e);
+            }
+        }
+
+        function resetDefaults(){
+            if (!confirm('Vorlage auf Standard zurücksetzen?')) return;
+            document.getElementById('tpl-subject').value = 'Zeiterfassung für {{mitarbeiter_name}} ({{von}} bis {{bis}})';
+            document.getElementById('tpl-header').value = 'Zeiterfassung - {{mitarbeiter_name}}';
+            document.getElementById('tpl-intro').value = 'Anbei finden Sie die Zeiterfassung für den Zeitraum {{von}} bis {{bis}}.\n\nGesamtanzahl Einträge: {{anzahl_eintraege}}\nGesamte Arbeitsstunden: {{gesamt_stunden}}h';
+            document.getElementById('tpl-footer').value = 'Diese E-Mail wurde automatisch vom McTime System generiert.\n\nBei Fragen wenden Sie sich bitte an Ihren Vorgesetzten.';
+        }
+
+        document.getElementById('save-btn').addEventListener('click', saveTemplate);
+        document.getElementById('reset-btn').addEventListener('click', resetDefaults);
+        window.addEventListener('DOMContentLoaded', loadTemplate);
+    </script>
+</body>
+</html>
