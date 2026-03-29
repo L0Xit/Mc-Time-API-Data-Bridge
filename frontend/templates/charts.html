@@ -2291,10 +2291,14 @@
             document.getElementById('customDateFrom').value = `${defaultYear}-${String(defaultMonth).padStart(2, '0')}-01`;
             document.getElementById('customDateTo').value = lastDayOfMonth.toISOString().split('T')[0];
 
-            // Default: Monat-Filter ist aktiv
-            updateFilterUI('month');
-
-            // NICHT automatisch laden - Benutzer soll erst Filter wählen und klicken
+            // Kein Filter vorausgewählt - User soll selbst wählen
+            // Alle Filter-Details verstecken
+            document.querySelectorAll('.filter-detail').forEach(detail => {
+                detail.style.display = 'none';
+            });
+            document.querySelectorAll('.filter-chip').forEach(btn => {
+                btn.classList.remove('active');
+            });
         });
     </script>
 </body>
