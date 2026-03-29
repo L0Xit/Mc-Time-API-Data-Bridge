@@ -81,14 +81,15 @@ body {
 
 /* Modern Header */
 .header {
-    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-    border-bottom: 1px solid #e2e8f0;
-    padding: 16px 0;
+    background: rgba(255, 255, 255, 0.85);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+    padding: 12px 0;
     position: sticky;
     top: 0;
     z-index: 100;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
 }
 
 .header-content {
@@ -125,9 +126,9 @@ body {
 
 .slogan {
     font-size: 14px;
-    color: #64748b;
-    font-weight: 400;
-    letter-spacing: 0.3px;
+    color: #334155;
+    font-weight: 600;
+    letter-spacing: 0.2px;
 }
 
 /* Responsive Header */
@@ -137,12 +138,12 @@ body {
         gap: 8px;
         padding: 0 16px;
     }
-    
+
     .slogan {
-        font-size: 12px;
+        font-size: 11px;
         text-align: center;
     }
-    
+
     .logo {
         height: 28px;
     }

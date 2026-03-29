@@ -777,11 +777,11 @@
             animation: fadeIn 0.3s ease;
         }
 
-        /* Filter Loading */
+        /* Filter Loading - Progress Bar */
         .filter-loading {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
             gap: 12px;
             padding: 20px;
             background: #f8fafc;
@@ -789,6 +789,37 @@
             margin-top: 20px;
             color: #64748b;
             font-weight: 500;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #6366f1, #3b82f6);
+            background-size: 200% 100%;
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.3s ease;
+            animation: progressShimmer 1.5s ease infinite;
+        }
+
+        @keyframes progressShimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            font-size: 0.8rem;
+            color: #94a3b8;
         }
 
         .loading-spinner-modern {
@@ -1241,10 +1272,19 @@
                     <span>Größere Zeiträume benötigen mehr Ladezeit</span>
                 </div>
                 
-                <!-- Loading Indicator -->
+                <!-- Loading Indicator with Progress Bar -->
                 <div class="filter-loading" id="filterLoading" style="display: none;">
-                    <div class="loading-spinner-modern"></div>
-                    <span>Daten werden geladen...</span>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="loading-spinner-modern"></div>
+                        <span id="loadingStatusText">Daten werden geladen...</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" id="progressBarFill"></div>
+                    </div>
+                    <div class="progress-info">
+                        <span id="progressStepText">Mitarbeiter werden abgefragt...</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
                 </div>
                 
                 <!-- Load Time Badge -->
@@ -2121,13 +2161,44 @@
             const filterLoading = document.getElementById('filterLoading');
             const loadTimeBadge = document.getElementById('loadTimeBadge');
             const loadTimeText = document.getElementById('loadTimeText');
-            
+            const progressBarFill = document.getElementById('progressBarFill');
+            const progressStepText = document.getElementById('progressStepText');
+            const progressPercent = document.getElementById('progressPercent');
+            const loadingStatusText = document.getElementById('loadingStatusText');
+
             // Loading anzeigen, Ladezeit-Badge ausblenden
             filterLoading.style.display = 'flex';
             loadTimeBadge.classList.remove('visible');
-            
+            progressBarFill.style.width = '0%';
+            progressPercent.textContent = '0%';
+            progressStepText.textContent = 'Verbindung wird hergestellt...';
+            loadingStatusText.textContent = 'Daten werden geladen...';
+
+            // Simuliere Fortschritt (da wir den echten Server-Fortschritt nicht kennen)
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                if (progress < 90) {
+                    // Schneller am Anfang, langsamer gegen Ende
+                    const increment = progress < 30 ? 8 : progress < 60 ? 4 : 2;
+                    progress = Math.min(progress + increment, 90);
+                    progressBarFill.style.width = progress + '%';
+                    progressPercent.textContent = Math.round(progress) + '%';
+
+                    // Statustext wechseln
+                    if (progress < 20) {
+                        progressStepText.textContent = 'Verbindung wird hergestellt...';
+                    } else if (progress < 50) {
+                        progressStepText.textContent = 'Mitarbeiter werden abgefragt...';
+                    } else if (progress < 75) {
+                        progressStepText.textContent = 'Zeiteinträge werden berechnet...';
+                    } else {
+                        progressStepText.textContent = 'Daten werden aggregiert...';
+                    }
+                }
+            }, 200);
+
             const startTime = performance.now();
-            
+
             try {
                 let url = `/api/chart-stats?filter=${filter}`;
                 if (filter === 'month' && monthValue) {
@@ -2136,38 +2207,49 @@
                 if (filter === 'custom' && dateFrom && dateTo) {
                     url += `&from=${dateFrom}&to=${dateTo}`;
                 }
-                
-                console.log('🔄 Lade Chart-Daten von:', url);
-                
+
+                console.log('Lade Chart-Daten von:', url);
+
                 const response = await fetch(url);
                 const data = await response.json();
-                
-                console.log('📊 Response Status:', data.status, 'Filter:', filter);
-                
+
+                // Fortschritt auf 100% setzen
+                clearInterval(progressInterval);
+                progressBarFill.style.width = '100%';
+                progressPercent.textContent = '100%';
+                progressStepText.textContent = 'Fertig!';
+                loadingStatusText.textContent = 'Charts werden aktualisiert...';
+
+                console.log('Response Status:', data.status, 'Filter:', filter);
+
                 const loadTime = ((performance.now() - startTime) / 1000).toFixed(1);
-                
+
                 if (data.status === 'success') {
-                    console.log('✅ Daten geladen erfolgreich!');
+                    console.log('Daten geladen erfolgreich!');
                     updateKPIs(data.kpi);
                     updateCharts(data);
-                    
+
                     // Update Periodtext mit Label
                     const periodTextEl = document.getElementById('selected-period-text');
                     periodTextEl.textContent = customLabel || data.filter_label || 'Daten geladen';
-                    
+
                     // Ladezeit anzeigen
                     loadTimeText.textContent = `Geladen in ${loadTime}s`;
                     loadTimeBadge.classList.add('visible');
-                    
+
                 } else {
-                    console.error('❌ Fehler:', data.message || data.error);
+                    console.error('Fehler:', data.message || data.error);
                     alert('Fehler beim Laden der Daten: ' + (data.message || data.error));
                 }
             } catch (error) {
-                console.error('❌ Netzwerkfehler beim Laden der Daten:', error);
+                clearInterval(progressInterval);
+                console.error('Netzwerkfehler beim Laden der Daten:', error);
                 alert('Fehler: ' + error.message);
             } finally {
-                filterLoading.style.display = 'none';
+                // Kurz warten damit man 100% sieht, dann ausblenden
+                setTimeout(() => {
+                    filterLoading.style.display = 'none';
+                }, 300);
             }
         }
         

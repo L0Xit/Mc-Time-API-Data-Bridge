@@ -667,74 +667,77 @@ def get_chart_stats():
             total_entries = 0
             employee_names_full = []
 
-            # Sammle Daten von allen Mitarbeitern
-            for emp in employees:
+            # Sammle Daten von allen Mitarbeitern PARALLEL (statt sequentiell)
+            def fetch_employee_entries(emp):
                 emp_id = emp.get('id') or emp.get('employee_id')
                 emp_name = emp.get('name') or emp.get('employee_name') or emp.get('first_name', '')
-
                 if not emp_id:
-                    continue
-
+                    return None
                 try:
-                    # Hole Zeit-Einträge für diesen Mitarbeiter
                     time_entries = middleware.get_time_entries(
                         employee_id=emp_id,
                         date_from=date_from_api,
                         date_to=date_to_api
                     )
-
-                    if time_entries:
-                        total_entries += len(time_entries)
-                        # Aggregiere für Mitarbeiter
-                        emp_total = 0
-                        for entry in time_entries:
-                            # Backend liefert actual_work_hours (Stunden ohne Pausen)
-                            hours = entry.get('actual_work_hours', 0) or 0
-                            if isinstance(hours, str):
-                                try:
-                                    hours = float(hours.replace(',', '.'))
-                                except (ValueError, AttributeError):
-                                    hours = 0
-
-                            emp_total += hours
-
-                            # Tägliche Aggregation - date_formatted ist "DD.MM.YY"
-                            date_key = entry.get('date_formatted', 'unknown')
-                            if date_key not in daily_hours:
-                                daily_hours[date_key] = 0
-                            daily_hours[date_key] += hours
-
-                            # Wochentag-Aggregation
-                            try:
-                                if date_key and date_key != 'unknown':
-                                    # Format: "DD.MM.YY" oder "DD.MM.YYYY"
-                                    parts = date_key.split('.')
-                                    if len(parts) == 3:
-                                        day_val = int(parts[0])
-                                        month_val = int(parts[1])
-                                        year_val = int(parts[2])
-                                        if year_val < 100:
-                                            year_val += 2000
-                                        dt = datetime(year_val, month_val, day_val)
-                                        weekday_idx = dt.weekday()  # 0=Mo, 6=So
-                                        weekday_hours[weekday_idx] += hours
-                            except (ValueError, IndexError):
-                                pass
-
-                            # Projekt-Aggregation
-                            project = entry.get('project', '') or 'Sonstiges'
-                            if project not in project_hours:
-                                project_hours[project] = 0
-                            project_hours[project] += hours
-
-                        if emp_total > 0:
-                            employee_hours[emp_name or emp_id] = emp_total
-                            employee_names_full.append(emp_name or emp_id)
-                            total_hours += emp_total
-
+                    return (emp_id, emp_name, time_entries)
                 except Exception as e:
                     logger.warning(f"Fehler bei Mitarbeiter {emp_id}: {e}")
+                    return None
+
+            with ThreadPoolExecutor(max_workers=8) as executor:
+                results = list(executor.map(fetch_employee_entries, employees))
+
+            for result in results:
+                if result is None:
                     continue
+                emp_id, emp_name, time_entries = result
+
+                if time_entries:
+                    total_entries += len(time_entries)
+                    emp_total = 0
+                    for entry in time_entries:
+                        # Backend liefert actual_work_hours (Stunden ohne Pausen)
+                        hours = entry.get('actual_work_hours', 0) or 0
+                        if isinstance(hours, str):
+                            try:
+                                hours = float(hours.replace(',', '.'))
+                            except (ValueError, AttributeError):
+                                hours = 0
+
+                        emp_total += hours
+
+                        # Tägliche Aggregation - date_formatted ist "DD.MM.YY"
+                        date_key = entry.get('date_formatted', 'unknown')
+                        if date_key not in daily_hours:
+                            daily_hours[date_key] = 0
+                        daily_hours[date_key] += hours
+
+                        # Wochentag-Aggregation
+                        try:
+                            if date_key and date_key != 'unknown':
+                                parts = date_key.split('.')
+                                if len(parts) == 3:
+                                    day_val = int(parts[0])
+                                    month_val = int(parts[1])
+                                    year_val = int(parts[2])
+                                    if year_val < 100:
+                                        year_val += 2000
+                                    dt = datetime(year_val, month_val, day_val)
+                                    weekday_idx = dt.weekday()
+                                    weekday_hours[weekday_idx] += hours
+                        except (ValueError, IndexError):
+                            pass
+
+                        # Projekt-Aggregation
+                        project = entry.get('project', '') or 'Sonstiges'
+                        if project not in project_hours:
+                            project_hours[project] = 0
+                        project_hours[project] += hours
+
+                    if emp_total > 0:
+                        employee_hours[emp_name or emp_id] = emp_total
+                        employee_names_full.append(emp_name or emp_id)
+                        total_hours += emp_total
 
             # Sortierte Mitarbeiter-Daten (Top 10)
             sorted_employees = sorted(employee_hours.items(), key=lambda x: x[1], reverse=True)
