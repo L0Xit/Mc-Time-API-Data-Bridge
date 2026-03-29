@@ -11,8 +11,17 @@ import json
 import logging
 from datetime import datetime, timedelta
 
+# Fix Windows console encoding (charmap codec error with Unicode characters)
+if sys.platform == 'win32':
+    try:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
 # Configure logging to handle UTF-8
-logging.basicConfig(level=logging.INFO, format='[%(name)s] %(message)s')
+logging.basicConfig(level=logging.INFO, format='[%(name)s] %(message)s',
+                    handlers=[logging.StreamHandler(stream=sys.stdout)])
 logger = logging.getLogger(__name__)
 
 # Füge Projekt-Root zum Pfad hinzu
@@ -679,7 +688,8 @@ def get_chart_stats():
                         # Aggregiere für Mitarbeiter
                         emp_total = 0
                         for entry in time_entries:
-                            hours = entry.get('hours', 0)
+                            # Backend liefert actual_work_hours (Stunden ohne Pausen)
+                            hours = entry.get('actual_work_hours', 0) or 0
                             if isinstance(hours, str):
                                 try:
                                     hours = float(hours.replace(',', '.'))
@@ -688,18 +698,17 @@ def get_chart_stats():
 
                             emp_total += hours
 
-                            # Tägliche Aggregation
-                            date_key = entry.get('date', 'unknown')
+                            # Tägliche Aggregation - date_formatted ist "DD.MM.YY"
+                            date_key = entry.get('date_formatted', 'unknown')
                             if date_key not in daily_hours:
                                 daily_hours[date_key] = 0
                             daily_hours[date_key] += hours
 
                             # Wochentag-Aggregation
                             try:
-                                date_formatted = entry.get('date_formatted', '')
-                                if date_formatted:
+                                if date_key and date_key != 'unknown':
                                     # Format: "DD.MM.YY" oder "DD.MM.YYYY"
-                                    parts = date_formatted.split('.')
+                                    parts = date_key.split('.')
                                     if len(parts) == 3:
                                         day_val = int(parts[0])
                                         month_val = int(parts[1])
