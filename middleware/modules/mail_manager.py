@@ -342,8 +342,8 @@ class MailManager:
             print("Sende E-Mail...")
             server.sendmail(self.sender_email, all_recipients, msg.as_string())
             server.quit()
-            
-            print(f"✅ E-Mail erfolgreich gesendet an {len(to_list)} Empfänger" + (f" (+ {len(cc_list)} CC)" if cc_list else ""))
+
+            print(f"[OK] E-Mail erfolgreich gesendet an {len(to_list)} Empfänger" + (f" (+ {len(cc_list)} CC)" if cc_list else ""))
             return True
             
         except smtplib.SMTPAuthenticationError as e:

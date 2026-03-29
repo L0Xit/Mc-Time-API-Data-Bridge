@@ -1,10 +1,7 @@
-# TGM-Adapter Requirements
+# McTime API Data Bridge Requirements
 
 # Web Framework
 flask>=2.0.0
-
-# Production WSGI Server
-gunicorn>=20.0.0
 
 # HTTP Requests
 requests>=2.25.0

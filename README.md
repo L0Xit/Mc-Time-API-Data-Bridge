@@ -1,103 +1,88 @@
-# McTime API Data Bridge
+# Mc-Time API Data Bridge
 
-> Ein modernes Dashboard zur Zeiterfassungsverwaltung mit McTime API Integration
+**Version 2.1 - Stabile Version mit erweitertem Charting und Bugfixes**
+
+Ein modernes Dashboard zur Zeiterfassungsverwaltung, das direkt mit der McTime API integriert ist. Entwickelt für die HTL Spengergasse, 5. Jahrgang, als Abschlussprojekt.
 
 ## 🚀 Features
 
-- **Zeiterfassung** - Automatischer Abruf und Anzeige von Arbeitszeitdaten
-- **Multi-Mitarbeiter** - Unterstützt 500+ Mitarbeiter mit skalierbarer UI
-- **Charts & Statistiken** - Visuelle Auswertungen mit interaktiven Diagrammen
-- **E-Mail Export** - Zeitdaten direkt per E-Mail versenden
-- **Performance** - Parallele API-Aufrufe und Caching für schnelle Ladezeiten
+- **Dynamisches Dashboard**: Echtzeit-Überblick über Zeiterfassungsdaten.
+- **Multi-Mitarbeiter-Unterstützung**: Skalierbare Architektur für die Verarbeitung von Daten von über 500 Mitarbeitern.
+- **Interaktive Charts & Statistiken**: Detaillierte visuelle Auswertungen mit Chart.js, inklusive Filterung nach Monat, Quartal, Jahr und benutzerdefinierten Zeiträumen.
+- **Asynchroner E-Mail-Export**: Versenden von Zeitdaten-Berichten per E-Mail, ohne die UI zu blockieren.
+- **Performance-Optimierung**: Parallele API-Aufrufe und serverseitiges Caching zur Minimierung von Ladezeiten.
+- **Hybride Architektur**: Nutzt einen robusten Backend-Service mit einem Middleware-Fallback für maximale Zuverlässigkeit.
+- **Sicherheits-Features**: Schutz durch API-Key-Authentifizierung und Rate Limiting.
 
-## 📁 Projektstruktur
+## 🛠️ Technische Dokumentation
 
-```
-Mc-Time-API-Data-Bridge/
-├── backend/                    # Backend-Layer (McTime API Kommunikation)
-│   ├── api_handler.py         # Haupt-API-Handler
-│   ├── client.py              # HTTP Client
-│   └── modules/               # API-Module
-│       ├── employee_list.py   # Mitarbeiterliste
-│       ├── mail.py            # E-Mail Funktionen
-│       ├── times.py           # Zeiterfassung
-│       └── user_id.py         # Benutzer-IDs
-│
-├── frontend/                   # Frontend-Layer (Flask Web-App)
-│   ├── app.py                 # Flask Application
-│   ├── api_connector.py       # Frontend API Connector
-│   ├── static/                # CSS, JS, Assets
-│   └── templates/             # HTML Templates
-│
-├── middleware/                 # Middleware-Layer (Business Logic)
-│   ├── auth.py                # Authentifizierung
-│   ├── core.py                # Kern-Middleware
-│   ├── request_handler.py     # Request Processing
-│   └── modules/               # Middleware-Module
-│       ├── employee_manager.py
-│       ├── mail_manager.py
-│       └── time_manager.py
-│
-├── config/                     # Konfiguration (NEU)
-│   ├── __init__.py
-│   └── settings.py            # Zentrale Einstellungen
-│
-├── services/                   # Standalone Services (NEU)
-│   ├── __init__.py
-│   └── webhook_email.py       # E-Mail Webhook Service
-│
-├── tests/                      # Unit Tests (NEU)
-│   ├── __init__.py
-│   └── test_env.py            # Environment Tests
-│
-├── .env.example               # Beispiel-Umgebungsvariablen
-├── requirements.txt           # Python Dependencies
-├── QUICKSTART.md              # Schnellstart-Anleitung
-└── README.md                  # Diese Datei
-```
+### Architektur
+Das Projekt folgt einer 3-Tier-Architektur:
 
-## 🛠️ Installation
+1.  **Frontend (`/frontend`)**: Eine Flask-basierte Webanwendung, die das User Interface (UI) bereitstellt. Sie kommuniziert über API-Endpunkte mit dem Middleware-Layer.
+    -   `app.py`: Hauptanwendung mit Routen-Definitionen.
+    -   `templates/`: Jinja2-Templates für die HTML-Struktur.
+    -   `static/`: CSS- und JavaScript-Dateien.
 
-1. **Repository klonen**
-   ```bash
-   git clone https://github.com/L0Xit/Mc-Time-API-Data-Bridge.git
-   cd Mc-Time-API-Data-Bridge
-   ```
+2.  **Middleware (`/middleware`)**: Das Herzstück der Anwendungslogik. Sie verarbeitet Anfragen vom Frontend, orchestriert die Datenbeschaffung und wendet Geschäftslogik an (z.B. Caching, Fehlerbehandlung).
+    -   `core.py`: Kernkomponente, die Anfragen entgegennimmt.
+    -   `request_handler.py`: Steuert die parallele Ausführung von API-Abfragen.
+    -   `modules/`: Spezialisierte Manager für Zeit, E-Mail und Mitarbeiter.
 
-2. **Virtual Environment erstellen**
-   ```bash
-   python -m venv venv
-   venv\Scripts\activate  # Windows
-   ```
+3.  **Backend (`/backend`)**: Der Layer, der direkt mit der externen McTime API interagiert. Er ist für die reine Datenbeschaffung und -konvertierung zuständig.
+    -   `api_handler.py`: Stellt eine saubere Schnittstelle zur McTime API bereit.
+    -   `client.py`: Ein HTTP-Client für die API-Kommunikation.
 
-3. **Dependencies installieren**
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Installation & Inbetriebnahme
 
-4. **Umgebungsvariablen konfigurieren**
-   ```bash
-   copy .env.example .env
-   # .env Datei mit eigenen Werten ausfüllen
-   ```
+1.  **Repository klonen**:
+    ```bash
+    git clone https://github.com/L0Xit/Mc-Time-API-Data-Bridge.git
+    cd Mc-Time-API-Data-Bridge
+    ```
 
-5. **Server starten**
-   ```bash
-   cd frontend
-   python app.py
-   ```
+2.  **Python Virtual Environment erstellen**:
+    ```bash
+    python -m venv venv
+    # Windows
+    venv\Scripts\activate
+    # macOS/Linux
+    source venv/bin/activate
+    ```
 
-6. **Browser öffnen**
-   ```
-   http://127.0.0.1:5000
-   ```
+3.  **Abhängigkeiten installieren**:
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-## ⚙️ Konfiguration
+4.  **Umgebungsvariablen konfigurieren**:
+    -   Kopieren Sie die Vorlagedatei: `copy .env.example .env` (Windows) oder `cp .env.example .env` (macOS/Linux).
+    -   Öffnen Sie die `.env`-Datei und tragen Sie Ihre McTime API- und SMTP-Zugangsdaten ein. **Wichtig**: Diese Datei wird durch `.gitignore` ignoriert und darf niemals committet werden.
 
-Alle Einstellungen in `.env`:
+5.  **Server starten (Entwicklungsmodus)**:
+    ```bash
+    # PowerShell
+    $env:FLASK_APP = "frontend/app.py"; $env:FLASK_DEBUG = "1"; flask run
+    
+    # Bash (macOS/Linux)
+    export FLASK_APP=frontend/app.py
+    export FLASK_DEBUG=1
+    flask run
+    ```
 
-| Variable | Beschreibung |
-|----------|-------------|
+6.  **Anwendung im Browser öffnen**:
+    [http://127.0.0.1:5000](http://127.0.0.1:5000)
+
+### Security
+Die Sicherheit wird durch mehrere Maßnahmen gewährleistet:
+-   **Secrets Management**: Alle sensiblen Daten (API-Keys, Passwörter) werden ausschließlich über Umgebungsvariablen (`.env`-Datei) geladen und sind im Code-Repository nicht vorhanden.
+-   **`.gitignore`**: Verhindert das versehentliche Hochladen der `.env`-Datei.
+-   **Input Validierung**: Serverseitige Überprüfung von Eingabeparametern, um Injection-Angriffe zu verhindern.
+-   Detaillierte Informationen finden Sie in der [SECURITY.md](SECURITY.md).
+
+### Lizenz
+Dieses Projekt steht unter der **MIT-Lizenz**. Details finden Sie in der `LICENSE`-Datei. Sie dürfen den Code frei verwenden, modifizieren und verteilen, solange der ursprüngliche Copyright-Hinweis beibehalten wird.
+
 | `MCTIME_API_KEY` | McTime API Schlüssel |
 | `SMTP_SERVER` | SMTP Server Adresse |
 | `SMTP_PORT` | SMTP Port (Standard: 587) |

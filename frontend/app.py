@@ -8,6 +8,11 @@ import time
 from functools import lru_cache
 import hashlib
 import json
+import logging
+
+# Configure logging to handle UTF-8
+logging.basicConfig(level=logging.INFO, format='[%(name)s] %(message)s')
+logger = logging.getLogger(__name__)
 
 # Füge Projekt-Root zum Pfad hinzu
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -37,6 +42,42 @@ API_KEY = os.getenv('MCTIME_API_KEY')
 # Cache für API-Daten (TTL: 5 Minuten)
 _cache = {}
 _cache_ttl = 300  # 5 Minuten
+
+# ==================== REQUEST TRACKING ====================
+# Globale Request-Statistiken für das Dashboard
+_request_stats = {
+    "total_requests": 0,
+    "successful_requests": 0,
+    "failed_requests": 0,
+    "response_times": [],  # Letzte 100 Response-Zeiten
+    "start_time": time.time()
+}
+
+def track_request(success: bool, response_time_ms: float = 0):
+    """Trackt einen API-Request für Statistiken"""
+    _request_stats["total_requests"] += 1
+    if success:
+        _request_stats["successful_requests"] += 1
+    else:
+        _request_stats["failed_requests"] += 1
+
+    # Response-Zeit speichern (max 100)
+    _request_stats["response_times"].append(response_time_ms)
+    if len(_request_stats["response_times"]) > 100:
+        _request_stats["response_times"] = _request_stats["response_times"][-100:]
+
+def get_request_stats():
+    """Gibt aktuelle Request-Statistiken zurück"""
+    avg_time = 0
+    if _request_stats["response_times"]:
+        avg_time = sum(_request_stats["response_times"]) / len(_request_stats["response_times"])
+
+    return {
+        "total_requests": _request_stats["total_requests"],
+        "successful_requests": _request_stats["successful_requests"],
+        "failed_requests": _request_stats["failed_requests"],
+        "avg_response_time_ms": round(avg_time, 1)
+    }
 
 def get_cache_key(prefix, **kwargs):
     """Erstellt einen eindeutigen Cache-Key"""
@@ -69,18 +110,18 @@ if not API_KEY:
 try:
     backend_service = BackendService(API_KEY) if API_KEY else None
     if backend_service:
-        print("✅ Backend Service initialisiert")
+        print("[OK] Backend Service initialisiert")
 except Exception as e:
-    print(f"❌ Backend-Fehler: {e}")
+    print(f"[FEHLER] Backend-Fehler: {e}")
     backend_service = None
 
 # Initialisiere Middleware (für zusätzliche Features)
 try:
     middleware = get_middleware(API_KEY) if API_KEY else None
     if middleware:
-        print("✅ Middleware initialisiert")
+        print("[OK] Middleware initialisiert")
 except Exception as e:
-    print(f"❌ Middleware-Fehler: {e}")
+    print(f"[FEHLER] Middleware-Fehler: {e}")
     middleware = None
 
 @app.route('/')
@@ -129,7 +170,95 @@ def page_1():
 
 @app.route('/api/status')
 def system_status():
-    """Gibt den Status von Backend und Middleware zurück"""
+    """Gibt den erweiterten Status von Backend und Middleware zurück"""
+
+    # Middleware-Features prüfen
+    middleware_features = {
+        "authentication": {
+            "name": "Authentifizierung",
+            "status": False,
+            "description": "API-Key basierte Authentifizierung"
+        },
+        "rate_limiting": {
+            "name": "Rate Limiting",
+            "status": False,
+            "description": "Anfragenlimitierung zum Schutz der API"
+        },
+        "email_service": {
+            "name": "E-Mail Service",
+            "status": False,
+            "description": "SMTP-basierter E-Mail-Versand"
+        },
+        "data_transformation": {
+            "name": "Datentransformation",
+            "status": False,
+            "description": "JSON → CSV Konvertierung"
+        },
+        "multi_employee": {
+            "name": "Multi-Mitarbeiter",
+            "status": False,
+            "description": "Mehrere Mitarbeiter gleichzeitig verarbeiten"
+        },
+        "csv_export": {
+            "name": "CSV Export",
+            "status": False,
+            "description": "WorkExpert-kompatibles CSV-Format"
+        },
+        "caching": {
+            "name": "Caching",
+            "status": False,
+            "description": "Performance-Cache für API-Daten"
+        },
+        "api_v2": {
+            "name": "API v2 Kompatibilität",
+            "status": False,
+            "description": "McTime API Version 2 Support"
+        }
+    }
+
+    # Health-Statistiken - nutze App-Level Tracking
+    app_stats = get_request_stats()
+    health_stats = {
+        "uptime": "N/A",
+        "requests_total": app_stats["total_requests"],
+        "requests_success": app_stats["successful_requests"],
+        "requests_failed": app_stats["failed_requests"],
+        "avg_response_time": app_stats["avg_response_time_ms"],
+        "cache_entries": len(_cache),
+        "cache_hit_rate": "N/A"
+    }
+
+    if middleware:
+        # Authentication ist aktiv wenn API-Key gesetzt
+        middleware_features["authentication"]["status"] = bool(middleware.api_key)
+
+        # Rate Limiting (Request-Handler prüfen)
+        if hasattr(middleware, 'request_handler') and middleware.request_handler:
+            middleware_features["rate_limiting"]["status"] = True
+
+        # E-Mail Service aktiv wenn MailManager existiert
+        if hasattr(middleware, 'mail') and middleware.mail:
+            middleware_features["email_service"]["status"] = True
+
+        # Datentransformation (immer aktiv wenn Middleware)
+        middleware_features["data_transformation"]["status"] = True
+
+        # Multi-Mitarbeiter (prüfe ob Methode existiert)
+        if hasattr(middleware, 'send_multi_employee_report'):
+            middleware_features["multi_employee"]["status"] = True
+
+        # CSV Export
+        if hasattr(middleware, 'convert_to_csv'):
+            middleware_features["csv_export"]["status"] = True
+
+        # Caching (aktiv wenn Cache existiert)
+        middleware_features["caching"]["status"] = len(_cache) >= 0  # Immer True
+
+        # API v2 Kompatibilität
+        if hasattr(middleware, 'request_handler') and middleware.request_handler:
+            if hasattr(middleware.request_handler, 'base_url'):
+                middleware_features["api_v2"]["status"] = "v2" in middleware.request_handler.base_url
+
     status = {
         "backend": {
             "available": backend_service is not None,
@@ -137,8 +266,10 @@ def system_status():
         },
         "middleware": {
             "available": middleware is not None,
-            "status": middleware.get_connection_status() if middleware else None
-        }
+            "status": middleware.get_connection_status() if middleware else None,
+            "features": middleware_features
+        },
+        "health": health_stats
     }
     return jsonify(status)
 
@@ -159,6 +290,33 @@ def middleware_stats():
         return jsonify({"error": "Middleware nicht initialisiert"})
     return jsonify(middleware.request_handler.get_stats())
 
+@app.route('/api/stats/reset', methods=['POST'])
+def reset_stats():
+    """Setzt die Request-Statistiken und den Cache zurück"""
+    global _request_stats, _cache
+    print("=== RESET STATS & CACHE CALLED ===")
+    
+    # Reset Request-Statistiken
+    _request_stats = {
+        "total_requests": 0,
+        "successful_requests": 0,
+        "failed_requests": 0,
+        "response_times": [],
+        "start_time": time.time()
+    }
+    
+    # Reset Cache komplett
+    _cache = {}
+    
+    print(f"[OK] Stats nach Reset: {_request_stats}")
+    print(f"[OK] Cache geleert!")
+    
+    return jsonify({
+        "status": "success", 
+        "message": "Statistiken und Cache vollständig zurückgesetzt",
+        "stats": _request_stats
+    })
+
 @app.route('/api/load-data', methods=['POST'])
 def load_data():
     """
@@ -171,18 +329,20 @@ def load_data():
         "bis": "dd.mm.yyyy"
     }
     """
+    start_time = time.time()
     try:
         form_data = request.get_json()
         print("=== HYBRID API CALL ===")
         print(f"Received form_data: {form_data}")
-        
+
         if not form_data:
             print("ERROR: No JSON data provided")
+            track_request(False, 0)
             return jsonify({
                 "status": "error",
                 "message": "No JSON data provided"
             }), 400
-        
+
         # Primär: Backend Service verwenden
         if backend_service:
             print("Using Backend Service...")
@@ -192,21 +352,26 @@ def load_data():
             print("Fallback: Using Middleware...")
             result = middleware.process_form_request(form_data)
         else:
+            track_request(False, (time.time() - start_time) * 1000)
             return jsonify({
                 "status": "error",
                 "message": "Weder Backend noch Middleware verfügbar"
             }), 500
-        
+
+        response_time = (time.time() - start_time) * 1000
         print(f"Result: {result}")
-        
+
         if result.get("status") == "error":
             print(f"Service returned error: {result.get('message')}")
+            track_request(False, response_time)
             return jsonify(result), 400
-        
+
         print(f"Success! Returning {len(result.get('data', {}).get('timeEntries', []))} time entries")
+        track_request(True, response_time)
         return jsonify(result)
-        
+
     except Exception as e:
+        track_request(False, (time.time() - start_time) * 1000)
         return jsonify({
             "status": "error",
             "message": f"Failed to process request: {str(e)}"
@@ -350,27 +515,40 @@ def send_email():
 @app.route('/api/employees')
 def get_employees():
     """Holt Mitarbeiterliste über Middleware"""
+    start_time = time.time()
     if not middleware:
+        track_request(False, 0)
         return jsonify({"error": "Middleware nicht initialisiert"}), 500
-    
-    org_id = request.args.get('organization_id')
-    org_name = request.args.get('organization_name')
-    employees = middleware.get_employees(org_id, org_name)
-    
-    # Debug: Zeige wie viele Mitarbeiter gefunden wurden
-    print(f"API /api/employees - org_id: {org_id}, org_name: {org_name}, gefunden: {len(employees)} Mitarbeiter")
-    
-    return jsonify(employees)
+
+    try:
+        org_id = request.args.get('organization_id')
+        org_name = request.args.get('organization_name')
+        employees = middleware.get_employees(org_id, org_name)
+
+        response_time = (time.time() - start_time) * 1000
+        print(f"API /api/employees - org_id: {org_id}, org_name: {org_name}, gefunden: {len(employees)} Mitarbeiter")
+        track_request(True, response_time)
+        return jsonify(employees)
+    except Exception as e:
+        track_request(False, (time.time() - start_time) * 1000)
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/organizations')
 def get_organizations():
     """Holt Organisationsliste über Middleware"""
+    start_time = time.time()
     if not middleware:
+        track_request(False, 0)
         return jsonify({"error": "Middleware nicht initialisiert"}), 500
-    
-    organizations = middleware.get_organizations()
-    return jsonify(organizations)
+
+    try:
+        organizations = middleware.get_organizations()
+        track_request(True, (time.time() - start_time) * 1000)
+        return jsonify(organizations)
+    except Exception as e:
+        track_request(False, (time.time() - start_time) * 1000)
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/cache/clear', methods=['POST'])
@@ -391,14 +569,21 @@ def api_cache_status():
     })
 
 
+@app.route('/api/test', methods=['GET'])
+def api_test():
+    """Einfacher Test-Endpoint"""
+    return jsonify({"status": "ok", "message": "API works!"})
+
 @app.route('/api/chart-stats')
 def get_chart_stats():
     """
     Holt aggregierte Statistiken für Charts
     
     Query-Parameter:
-    - filter: 'month' | 'year' | 'alltime' (default: 'month')
+    - filter: 'month' | 'year' | 'alltime' | 'custom' (default: 'month')
     - month: 'YYYY-MM' Format für spezifischen Monat (nur wenn filter='month')
+    - from: 'YYYY-MM-DD' Format für Start-Datum (nur wenn filter='custom')
+    - to: 'YYYY-MM-DD' Format für End-Datum (nur wenn filter='custom')
     
     Gibt zurück: Statistiken für alle Mitarbeiter im gewählten Zeitraum
     """
@@ -416,6 +601,8 @@ def get_chart_stats():
     # Filter auswerten
     time_filter = request.args.get('filter', 'month')
     month_param = request.args.get('month', None)  # YYYY-MM Format
+    custom_from = request.args.get('from', None)  # YYYY-MM-DD Format
+    custom_to = request.args.get('to', None)      # YYYY-MM-DD Format
     
     today = datetime.now()
     
@@ -466,6 +653,39 @@ def get_chart_stats():
             filter_label = f"{german_months[today.month-1]} {today.year}"
         month_ranges = [(date_from, date_to)]  # Nur ein Monat
         
+    elif time_filter == 'custom':
+        # Benutzerdefinierter Datumsbereich
+        if not custom_from or not custom_to:
+            print("[WARNING] Custom Filter ohne Datumsangaben - Fallback auf aktuellen Monat")
+            # Fallback auf aktuellen Monat
+            date_from = today.replace(day=1).strftime('%Y-%m-%d')
+            last_day = calendar.monthrange(today.year, today.month)[1]
+            date_to = today.replace(day=last_day).strftime('%Y-%m-%d')
+            filter_label = f"{german_months[today.month-1]} {today.year}"
+            month_ranges = [(date_from, date_to)]
+        else:
+            try:
+                from_date = datetime.strptime(custom_from, '%Y-%m-%d')
+                to_date = datetime.strptime(custom_to, '%Y-%m-%d')
+                date_from = custom_from
+                date_to = custom_to
+                # Format: "01. Jan - 31. Dez 2025"
+                from_label = from_date.strftime('%d.%m.%Y')
+                to_label = to_date.strftime('%d.%m.%Y')
+                filter_label = f"{from_label} bis {to_label}"
+                print(f"[OK] Custom Filter: {date_from} bis {date_to}")
+                
+                # Monats-Bereiche aus dem benutzerdefinierten Bereich generieren
+                month_ranges = generate_month_ranges(from_date, to_date)
+            except Exception as e:
+                print(f"[ERROR] Fehler beim Parsen von Custom-Daten: {e}")
+                # Fallback
+                date_from = today.replace(day=1).strftime('%Y-%m-%d')
+                last_day = calendar.monthrange(today.year, today.month)[1]
+                date_to = today.replace(day=last_day).strftime('%Y-%m-%d')
+                filter_label = f"{german_months[today.month-1]} {today.year}"
+                month_ranges = [(date_from, date_to)]
+        
     elif time_filter == 'year':
         # Aktuelles Jahr - Monat für Monat abrufen (API-Limit umgehen)
         start_date = datetime(today.year, 1, 1)
@@ -488,7 +708,7 @@ def get_chart_stats():
         cache_key = get_cache_key('chart_stats', filter=time_filter, month=month_param, date_from=date_from, date_to=date_to)
         cached_result = get_cached(cache_key)
         if cached_result:
-            print(f"✅ Chart-Stats aus Cache geladen!")
+            print(f"[CACHE] Chart-Stats aus Cache geladen!")
             return jsonify(cached_result)
         
         start_time = time.time()
@@ -501,7 +721,7 @@ def get_chart_stats():
         else:
             employees = []
         
-        print(f"⚡ Chart-Stats: {len(employees)} Mitarbeiter, {len(month_ranges)} Monats-Bereiche")
+        print(f"[CHART-STATS] {len(employees)} Mitarbeiter, {len(month_ranges)} Monats-Bereiche", file=sys.stderr)
         
         # Statistiken sammeln
         total_hours = 0.0
@@ -560,7 +780,7 @@ def get_chart_stats():
         # Parallel ausführen mit ThreadPool (max 10 gleichzeitige Anfragen)
         max_workers = min(10, len(employees))  # Max 10 parallel, nicht mehr als MA-Anzahl
         
-        print(f"⚡ Starte parallele Verarbeitung mit {max_workers} Workers...")
+        print(f"[PARALLEL] Starte parallele Verarbeitung mit {max_workers} Workers...")
         
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Alle Jobs einreichen
@@ -580,7 +800,7 @@ def get_chart_stats():
                 # Progress (alle 10 MA)
                 if completed % 10 == 0:
                     elapsed = time.time() - start_time
-                    print(f"  ⏳ {completed}/{len(employees)} Mitarbeiter verarbeitet ({elapsed:.1f}s)")
+                    print(f"  [PROGRESS] {completed}/{len(employees)} Mitarbeiter verarbeitet ({elapsed:.1f}s)", file=sys.stderr)
                 
                 emp_total = 0.0
                 for entry in time_entries:
@@ -629,7 +849,7 @@ def get_chart_stats():
                     })
         
         elapsed_total = time.time() - start_time
-        print(f"✅ Alle {len(employees)} Mitarbeiter in {elapsed_total:.1f}s verarbeitet!")
+        print(f"[OK] Alle {len(employees)} Mitarbeiter in {elapsed_total:.1f}s verarbeitet!")
         
         # Wochentage formatieren
         weekday_data = [
@@ -1016,6 +1236,55 @@ def download_csv():
     )
     
     return response
+
+
+@app.route('/api/test-chart-logic')
+def test_chart_logic():
+    """Nur zum Testen der internen Logik von get_chart_stats ohne echten API-Call."""
+    from datetime import datetime
+    
+    try:
+        # Simuliere einen einfachen Aufruf für den aktuellen Monat
+        time_filter = 'month'
+        month_param = datetime.now().strftime('%Y-%m')
+        
+        # Rufe die Logik auf (ohne den Request-Teil)
+        # HINWEIS: Dies ist eine vereinfachte Version der Logik in get_chart_stats
+        # um schnell Fehler zu finden.
+        
+        date_from = datetime.now().replace(day=1).strftime('%Y-%m-%d')
+        date_to = datetime.now().strftime('%Y-%m-%d')
+
+        if not backend_service:
+            return jsonify({"error": "Backend Service nicht verfügbar"}), 500
+
+        employees = backend_service.get_form_data().get('employees', [])
+        if not employees:
+            return jsonify({"error": "Keine Mitarbeiter gefunden"}), 500
+
+        # Teste nur den ersten Mitarbeiter
+        emp_id = employees[0].get('id')
+        entries = backend_service.mctime_api.get_time_entries(
+            employee_id=emp_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        return jsonify({
+            "status": "success",
+            "test_filter": time_filter,
+            "test_month": month_param,
+            "found_employees": len(employees),
+            "first_employee_entries": len(entries),
+            "first_employee_data": entries[:2] # zeige die ersten 2 Einträge
+        })
+    except Exception as e:
+        import traceback
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "trace": traceback.format_exc()
+        }), 500
 
 
 if __name__ == '__main__':

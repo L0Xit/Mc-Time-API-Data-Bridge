@@ -44,7 +44,7 @@
     <main class="main-content">
         <!-- Page Header -->
         <div class="page-header">
-            <h1 class="page-title">System Status & Konfiguration</h1>
+            <h1 class="page-title">Entwicklertools</h1>
             <div class="progress-container">
                 <div class="progress-label" id="progress-label">McTime API Data Bridge v2.0</div>
                 <div class="progress-bar">
@@ -52,6 +52,25 @@
                 </div>
             </div>
         </div>
+
+        <!-- Tab Navigation -->
+        <div class="dev-tabs">
+            <button class="dev-tab active" data-tab="status" onclick="switchTab('status')">
+                <svg viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                    <path fill="currentColor" d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M11,16.5L6.5,12L7.91,10.59L11,13.67L16.59,8.09L18,9.5L11,16.5Z"/>
+                </svg>
+                System Status
+            </button>
+            <button class="dev-tab" data-tab="middleware" onclick="switchTab('middleware')">
+                <svg viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                    <path fill="currentColor" d="M4,1C2.89,1 2,1.89 2,3V7C2,8.11 2.89,9 4,9H1V11H13V9H10C11.11,9 12,8.11 12,7V3C12,1.89 11.11,1 10,1H4M4,3H10V7H4V3M3,13V18L3,20H10V18H5V13H3M14,13C12.89,13 12,13.89 12,15V19C12,20.11 12.89,21 14,21H11V23H23V21H20C21.11,21 22,20.11 22,19V15C22,13.89 21.11,13 20,13H14M14,15H20V19H14V15Z"/>
+                </svg>
+                Middleware
+            </button>
+        </div>
+
+        <!-- Tab Content: Status -->
+        <div class="tab-content active" id="tab-status">
 
         <!-- Status Cards Grid -->
         <div class="config-grid">
@@ -123,6 +142,60 @@
             </div>
         </div>
 
+        <!-- Middleware Features Checklist -->
+        <div class="card" style="margin-top: 24px;">
+            <h2 class="card-title">
+                <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;">
+                    <path fill="currentColor" d="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z"/>
+                </svg>
+                Middleware Features
+            </h2>
+            <div class="features-grid" id="features-grid">
+                <div class="feature-loading">Lade Features...</div>
+            </div>
+        </div>
+
+        <!-- Live Health Dashboard -->
+        <div class="card" style="margin-top: 24px;">
+            <h2 class="card-title">
+                <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;">
+                    <path fill="currentColor" d="M19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5A2,2 0 0,0 19,3M9,17H7V10H9V17M13,17H11V7H13V17M17,17H15V13H17V17Z"/>
+                </svg>
+                Live Health Dashboard
+                <button onclick="refreshHealth()" class="refresh-btn" title="Aktualisieren">
+                    <svg viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                        <path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/>
+                    </svg>
+                </button>
+            </h2>
+            <div class="health-grid" id="health-grid">
+                <div class="health-card">
+                    <div class="health-value" id="health-requests">-</div>
+                    <div class="health-label">Anfragen Gesamt</div>
+                </div>
+                <div class="health-card success">
+                    <div class="health-value" id="health-success">-</div>
+                    <div class="health-label">Erfolgreich</div>
+                </div>
+                <div class="health-card error">
+                    <div class="health-value" id="health-failed">-</div>
+                    <div class="health-label">Fehlgeschlagen</div>
+                </div>
+                <div class="health-card">
+                    <div class="health-value" id="health-response-time">-</div>
+                    <div class="health-label">Antwortzeit (ms)</div>
+                </div>
+                <div class="health-card">
+                    <div class="health-value" id="health-cache">-</div>
+                    <div class="health-label">Cache-Einträge</div>
+                </div>
+                <div class="health-card">
+                    <div class="health-value" id="health-last-update">-</div>
+                    <div class="health-label">Letztes Update</div>
+                </div>
+            </div>
+        </div>
+
         <!-- System Info -->
         <div class="card" style="margin-top: 24px;">
             <h2 class="card-title">
@@ -150,6 +223,254 @@
                 </div>
             </div>
         </div>
+        </div><!-- Ende Tab Status -->
+
+        <!-- Tab Content: Middleware Architecture -->
+        <div class="tab-content" id="tab-middleware">
+            <!-- Middleware Architecture Visualization -->
+            <div class="card architecture-card">
+                <h2 class="card-title">
+                    <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;">
+                        <path fill="currentColor" d="M4,1C2.89,1 2,1.89 2,3V7C2,8.11 2.89,9 4,9H1V11H13V9H10C11.11,9 12,8.11 12,7V3C12,1.89 11.11,1 10,1H4M4,3H10V7H4V3M3,13V18L3,20H10V18H5V13H3M14,13C12.89,13 12,13.89 12,15V19C12,20.11 12.89,21 14,21H11V23H23V21H20C21.11,21 22,20.11 22,19V15C22,13.89 21.11,13 20,13H14M14,15H20V19H14V15Z"/>
+                    </svg>
+                    Middleware-Architektur (Schichtenmodell)
+                </h2>
+
+                <div class="architecture-diagram">
+                    <!-- Layer 1: Frontend -->
+                    <div class="arch-layer layer-frontend">
+                        <div class="layer-header">
+                            <div class="layer-icon">
+                                <svg viewBox="0 0 24 24" style="width: 32px; height: 32px;">
+                                    <path fill="currentColor" d="M12,3L1,9L12,15L21,10.09V17H23V9M5,13.18V17.18L12,21L19,17.18V13.18L12,17L5,13.18Z"/>
+                                </svg>
+                            </div>
+                            <div class="layer-title">Frontend</div>
+                            <div class="layer-status" id="arch-frontend-status">
+                                <span class="status-dot active"></span>
+                                <span>Aktiv</span>
+                            </div>
+                        </div>
+                        <div class="layer-details">
+                            <span class="detail-badge">Flask Templates</span>
+                            <span class="detail-badge">HTML/CSS/JS</span>
+                            <span class="detail-badge">REST Client</span>
+                        </div>
+                    </div>
+
+                    <!-- Arrow Down -->
+                    <div class="arch-arrow">
+                        <div class="arrow-line"></div>
+                        <div class="arrow-label">HTTP Request</div>
+                        <svg viewBox="0 0 24 24" class="arrow-icon">
+                            <path fill="currentColor" d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"/>
+                        </svg>
+                    </div>
+
+                    <!-- Layer 2: Middleware -->
+                    <div class="arch-layer layer-middleware">
+                        <div class="layer-header">
+                            <div class="layer-icon middleware-icon">
+                                <svg viewBox="0 0 24 24" style="width: 32px; height: 32px;">
+                                    <path fill="currentColor" d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
+                                </svg>
+                            </div>
+                            <div class="layer-title">Middleware</div>
+                            <div class="layer-status" id="arch-middleware-status">
+                                <span class="status-dot active"></span>
+                                <span>Aktiv</span>
+                            </div>
+                        </div>
+                        <div class="layer-details">
+                            <span class="detail-badge highlight">Authentifizierung</span>
+                            <span class="detail-badge highlight">Rate Limiting</span>
+                            <span class="detail-badge highlight">Fehlerbehandlung</span>
+                            <span class="detail-badge highlight">E-Mail Service</span>
+                        </div>
+                        <div class="middleware-modules">
+                            <div class="module-item">
+                                <span class="module-icon active">●</span>
+                                <span>AuthHandler</span>
+                            </div>
+                            <div class="module-item">
+                                <span class="module-icon active">●</span>
+                                <span>RequestHandler</span>
+                            </div>
+                            <div class="module-item">
+                                <span class="module-icon" id="mail-module-status">●</span>
+                                <span>MailManager</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Arrow Down -->
+                    <div class="arch-arrow">
+                        <div class="arrow-line"></div>
+                        <div class="arrow-label">API Call</div>
+                        <svg viewBox="0 0 24 24" class="arrow-icon">
+                            <path fill="currentColor" d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"/>
+                        </svg>
+                    </div>
+
+                    <!-- Layer 3: Backend -->
+                    <div class="arch-layer layer-backend">
+                        <div class="layer-header">
+                            <div class="layer-icon">
+                                <svg viewBox="0 0 24 24" style="width: 32px; height: 32px;">
+                                    <path fill="currentColor" d="M4,1H20A1,1 0 0,1 21,2V6A1,1 0 0,1 20,7H4A1,1 0 0,1 3,6V2A1,1 0 0,1 4,1M4,9H20A1,1 0 0,1 21,10V14A1,1 0 0,1 20,15H4A1,1 0 0,1 3,14V10A1,1 0 0,1 4,9M4,17H20A1,1 0 0,1 21,18V22A1,1 0 0,1 20,23H4A1,1 0 0,1 3,22V18A1,1 0 0,1 4,17M9,5H10V3H9V5M9,13H10V11H9V13M9,21H10V19H9V21M5,3V5H7V3H5M5,11V13H7V11H5M5,19V21H7V19H5Z"/>
+                                </svg>
+                            </div>
+                            <div class="layer-title">Backend Service</div>
+                            <div class="layer-status" id="arch-backend-status">
+                                <span class="status-dot active"></span>
+                                <span>Aktiv</span>
+                            </div>
+                        </div>
+                        <div class="layer-details">
+                            <span class="detail-badge">API Handler</span>
+                            <span class="detail-badge">Datenverarbeitung</span>
+                            <span class="detail-badge">CSV Export</span>
+                        </div>
+                    </div>
+
+                    <!-- Arrow Down -->
+                    <div class="arch-arrow">
+                        <div class="arrow-line"></div>
+                        <div class="arrow-label">HTTPS</div>
+                        <svg viewBox="0 0 24 24" class="arrow-icon">
+                            <path fill="currentColor" d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"/>
+                        </svg>
+                    </div>
+
+                    <!-- Layer 4: McTime API -->
+                    <div class="arch-layer layer-external">
+                        <div class="layer-header">
+                            <div class="layer-icon">
+                                <svg viewBox="0 0 24 24" style="width: 32px; height: 32px;">
+                                    <path fill="currentColor" d="M12,21L15.6,16.2C14.6,15.45 13.35,15 12,15C10.65,15 9.4,15.45 8.4,16.2L12,21M12,3C7.95,3 4.21,4.34 1.2,6.6L3,9C5.5,7.12 8.62,6 12,6C15.38,6 18.5,7.12 21,9L22.8,6.6C19.79,4.34 16.05,3 12,3M12,9C9.3,9 6.81,9.89 4.8,11.4L6.6,13.8C8.1,12.67 9.97,12 12,12C14.03,12 15.9,12.67 17.4,13.8L19.2,11.4C17.19,9.89 14.7,9 12,9Z"/>
+                                </svg>
+                            </div>
+                            <div class="layer-title">McTime API v2</div>
+                            <div class="layer-status" id="arch-api-status">
+                                <span class="status-dot" id="api-connection-dot">●</span>
+                                <span id="api-connection-text">Prüfen...</span>
+                            </div>
+                        </div>
+                        <div class="layer-details">
+                            <span class="detail-badge external">mctime.com/api/v2</span>
+                            <span class="detail-badge external">REST API</span>
+                            <span class="detail-badge external">JSON</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Middleware Statistics -->
+            <div class="card" style="margin-top: 24px;">
+                <h2 class="card-title">
+                    <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;">
+                        <path fill="currentColor" d="M19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5A2,2 0 0,0 19,3M9,17H7V10H9V17M13,17H11V7H13V17M17,17H15V13H17V17Z"/>
+                    </svg>
+                    Middleware-Statistiken
+                    <button onclick="refreshArchStats(this)" class="refresh-btn" id="arch-refresh-btn" title="Aktualisieren">
+                        <svg viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                            <path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/>
+                        </svg>
+                    </button>
+                    <button class="refresh-btn" id="arch-reset-btn" title="Zurücksetzen" style="color: #ef4444;">
+                        <svg viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                            <path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                        </svg>
+                    </button>
+                </h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
+                            <svg viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                                <path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/>
+                            </svg>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-number" id="stat-requests">0</div>
+                            <div class="stat-label">Anfragen Gesamt</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
+                            <svg viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                                <path fill="currentColor" d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M11,16.5L18,9.5L16.59,8.09L11,13.67L7.91,10.59L6.5,12L11,16.5Z"/>
+                            </svg>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-number success" id="stat-success">0</div>
+                            <div class="stat-label">Erfolgreich</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                            <svg viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                                <path fill="currentColor" d="M12,2C17.53,2 22,6.47 22,12C22,17.53 17.53,22 12,22C6.47,22 2,17.53 2,12C2,6.47 6.47,2 12,2M15.59,7L12,10.59L8.41,7L7,8.41L10.59,12L7,15.59L8.41,17L12,13.41L15.59,17L17,15.59L13.41,12L17,8.41L15.59,7Z"/>
+                            </svg>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-number error" id="stat-failed">0</div>
+                            <div class="stat-label">Fehlgeschlagen</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                            <svg viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                                <path fill="currentColor" d="M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z"/>
+                            </svg>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-number" id="stat-response-time">-</div>
+                            <div class="stat-label">Antwortzeit (ms)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Flow Description -->
+            <div class="card" style="margin-top: 24px;">
+                <h2 class="card-title">
+                    <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;">
+                        <path fill="currentColor" d="M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/>
+                    </svg>
+                    Datenfluss-Beschreibung
+                </h2>
+                <div class="flow-description">
+                    <div class="flow-step">
+                        <div class="flow-number">1</div>
+                        <div class="flow-content">
+                            <strong>Frontend sendet Anfrage</strong>
+                            <p>Benutzer-Interaktion wird als HTTP-Request an die Middleware gesendet</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div class="flow-number">2</div>
+                        <div class="flow-content">
+                            <strong>Middleware verarbeitet</strong>
+                            <p>Authentifizierung, Rate Limiting, Validierung und Fehlerbehandlung</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div class="flow-number">3</div>
+                        <div class="flow-content">
+                            <strong>Backend Service</strong>
+                            <p>Datenverarbeitung und Formatierung der API-Anfragen</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div class="flow-number">4</div>
+                        <div class="flow-content">
+                            <strong>McTime API</strong>
+                            <p>Externe REST-API liefert Zeiterfassungsdaten zurück</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div><!-- Ende Tab Middleware -->
     </main>
 
     <style>
@@ -266,13 +587,703 @@
             border: 1px solid #fecaca;
             color: #dc2626;
         }
+
+        /* Middleware Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .feature-item:hover {
+            background: #f1f5f9;
+        }
+
+        .feature-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .feature-icon.active {
+            color: #10b981;
+        }
+
+        .feature-icon.inactive {
+            color: #9ca3af;
+        }
+
+        .feature-content {
+            flex: 1;
+        }
+
+        .feature-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: #1f2937;
+        }
+
+        .feature-desc {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 2px;
+        }
+
+        .feature-loading {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+        }
+
+        .feature-warning {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-radius: 12px;
+            border: 1px solid #f59e0b;
+        }
+
+        .feature-warning-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #92400e;
+            margin-bottom: 8px;
+        }
+
+        .feature-warning-text {
+            font-size: 14px;
+            color: #a16207;
+        }
+
+        .feature-summary {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            padding: 12px 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 16px;
+            color: #1e40af;
+            font-size: 14px;
+        }
+
+        /* Health Dashboard Grid */
+        .health-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+        }
+
+        .health-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid #e5e7eb;
+        }
+
+        .health-card.success .health-value {
+            color: #10b981;
+        }
+
+        .health-card.error .health-value {
+            color: #ef4444;
+        }
+
+        .health-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #3b82f6;
+            font-family: 'Inter', monospace;
+        }
+
+        .health-label {
+            font-size: 11px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+
+        .refresh-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            margin-left: 8px;
+            border-radius: 4px;
+            color: #6b7280;
+            transition: all 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: #f1f5f9;
+            color: #3b82f6;
+        }
+
+        .refresh-btn.spinning svg {
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .card-title {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        /* Tab Navigation Styles */
+        .dev-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            background: #f1f5f9;
+            padding: 6px;
+            border-radius: 12px;
+        }
+
+        .dev-tab {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #64748b;
+            transition: all 0.2s ease;
+        }
+
+        .dev-tab:hover {
+            background: rgba(255, 255, 255, 0.5);
+            color: #1e293b;
+        }
+
+        .dev-tab.active {
+            background: white;
+            color: #3b82f6;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .dev-tab svg {
+            fill: currentColor;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Architecture Diagram Styles */
+        .architecture-card {
+            padding: 30px;
+        }
+
+        .architecture-diagram {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+            padding: 20px 0;
+        }
+
+        .arch-layer {
+            width: 100%;
+            max-width: 500px;
+            padding: 20px 24px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border: 2px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .arch-layer:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .layer-frontend {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            border-color: #93c5fd;
+        }
+
+        .layer-middleware {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-color: #fcd34d;
+        }
+
+        .layer-backend {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            border-color: #6ee7b7;
+        }
+
+        .layer-external {
+            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+            border-color: #a5b4fc;
+        }
+
+        .layer-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .layer-icon {
+            width: 48px;
+            height: 48px;
+            background: white;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .layer-frontend .layer-icon { color: #2563eb; }
+        .layer-middleware .layer-icon { color: #d97706; }
+        .layer-backend .layer-icon { color: #059669; }
+        .layer-external .layer-icon { color: #4f46e5; }
+
+        .layer-title {
+            flex: 1;
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .layer-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #9ca3af;
+        }
+
+        .status-dot.active {
+            background: #10b981;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.error {
+            background: #ef4444;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .layer-details {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .detail-badge {
+            padding: 4px 10px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+            color: #475569;
+        }
+
+        .detail-badge.highlight {
+            background: rgba(217, 119, 6, 0.2);
+            color: #92400e;
+            font-weight: 600;
+        }
+
+        .detail-badge.external {
+            background: rgba(79, 70, 229, 0.15);
+            color: #4338ca;
+        }
+
+        .middleware-modules {
+            display: flex;
+            gap: 16px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px dashed rgba(217, 119, 6, 0.3);
+        }
+
+        .module-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #78350f;
+        }
+
+        .module-icon {
+            font-size: 10px;
+            color: #9ca3af;
+        }
+
+        .module-icon.active {
+            color: #10b981;
+        }
+
+        /* Arrow Styles */
+        .arch-arrow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 0;
+            position: relative;
+        }
+
+        .arrow-line {
+            width: 3px;
+            height: 20px;
+            background: linear-gradient(180deg, #94a3b8, #64748b);
+            border-radius: 2px;
+        }
+
+        .arrow-label {
+            position: absolute;
+            right: calc(50% + 30px);
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 500;
+            background: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        .arrow-icon {
+            width: 20px;
+            height: 20px;
+            fill: #64748b;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+        }
+
+        .stat-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .stat-content {
+            flex: 1;
+        }
+
+        .stat-number {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1e293b;
+            font-family: 'Inter', monospace;
+        }
+
+        .stat-number.success { color: #10b981; }
+        .stat-number.error { color: #ef4444; }
+
+        .stat-label {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        /* Flow Description */
+        .flow-description {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .flow-step {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+        }
+
+        .flow-number {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .flow-content {
+            flex: 1;
+            padding-top: 4px;
+        }
+
+        .flow-content strong {
+            color: #1e293b;
+            font-size: 14px;
+        }
+
+        .flow-content p {
+            margin: 4px 0 0 0;
+            font-size: 13px;
+            color: #64748b;
+        }
     </style>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             loadSystemStatus();
+            loadArchitectureStatus();
+
+            // Reset Button explizit binden
+            const resetBtn = document.getElementById('arch-reset-btn');
+            if (resetBtn) {
+                resetBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    // Bestätigungsdialog
+                    if (!confirm('Alle Statistiken und Cache werden zurückgesetzt. Fortfahren?')) {
+                        return;
+                    }
+
+                    // Sofort UI auf 0 setzen
+                    document.getElementById('stat-requests').textContent = '0';
+                    document.getElementById('stat-success').textContent = '0';
+                    document.getElementById('stat-failed').textContent = '0';
+                    document.getElementById('stat-response-time').textContent = '-';
+
+                    // Button als aktiv markieren
+                    resetBtn.style.opacity = '0.5';
+                    resetBtn.style.pointerEvents = 'none';
+
+                    // Backend reset + Cache clear
+                    Promise.all([
+                        fetch('/api/stats/reset', { method: 'POST' }).then(r => r.json()),
+                        fetch('/api/cache/clear', { method: 'POST' }).then(r => r.json())
+                    ])
+                        .then(([resetData, cacheData]) => {
+                            console.log('✅ Reset OK:', resetData);
+                            console.log('✅ Cache gelöscht:', cacheData);
+                            
+                            // Bestätigungsmeldung anzeigen
+                            const msg = document.createElement('div');
+                            msg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #10b981; color: white; padding: 12px 20px; border-radius: 8px; z-index: 10000;';
+                            msg.textContent = '✅ Statistiken und Cache vollständig zurückgesetzt!';
+                            document.body.appendChild(msg);
+                            
+                            setTimeout(() => {
+                                msg.style.opacity = '0';
+                                msg.style.transition = 'opacity 0.3s';
+                                setTimeout(() => msg.remove(), 300);
+                            }, 3000);
+                            
+                            // Button reaktivieren
+                            resetBtn.style.opacity = '1';
+                            resetBtn.style.pointerEvents = 'auto';
+                        })
+                        .catch(e => {
+                            console.error('❌ Reset/Cache Error:', e);
+                            
+                            // Fehler anzeigen
+                            const msg = document.createElement('div');
+                            msg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #ef4444; color: white; padding: 12px 20px; border-radius: 8px; z-index: 10000;';
+                            msg.textContent = '❌ Fehler beim Reset!';
+                            document.body.appendChild(msg);
+                            
+                            setTimeout(() => {
+                                msg.style.opacity = '0';
+                                msg.style.transition = 'opacity 0.3s';
+                                setTimeout(() => msg.remove(), 300);
+                            }, 3000);
+                            
+                            // Button reaktivieren
+                            resetBtn.style.opacity = '1';
+                            resetBtn.style.pointerEvents = 'auto';
+                        });
+                });
+            }
         });
-        
+
+        // Tab Switching
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.dev-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+
+            // Load data for middleware tab
+            if (tabName === 'middleware') {
+                loadArchitectureStatus();
+            }
+        }
+
+        // Architecture Status Loading
+        function loadArchitectureStatus() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    // Update Frontend Status (always active)
+                    updateLayerStatus('arch-frontend-status', true);
+
+                    // Update Middleware Status
+                    const mwAvailable = data.middleware && data.middleware.available;
+                    updateLayerStatus('arch-middleware-status', mwAvailable);
+
+                    // Update Backend Status
+                    const backendAvailable = data.backend && data.backend.available;
+                    updateLayerStatus('arch-backend-status', backendAvailable);
+
+                    // Update Mail Module
+                    const mailModule = document.getElementById('mail-module-status');
+                    if (mailModule) {
+                        checkEmailForArch().then(isActive => {
+                            mailModule.classList.toggle('active', isActive);
+                        });
+                    }
+
+                    // Update Stats
+                    if (data.health) {
+                        document.getElementById('stat-requests').textContent = data.health.requests_total || 0;
+                        document.getElementById('stat-success').textContent = data.health.requests_success || 0;
+                        document.getElementById('stat-failed').textContent = data.health.requests_failed || 0;
+                        document.getElementById('stat-response-time').textContent =
+                            data.health.avg_response_time ? Math.round(data.health.avg_response_time) : '-';
+                    }
+
+                    // Check API Connection
+                    checkApiConnection();
+                })
+                .catch(error => {
+                    console.error('Error loading architecture status:', error);
+                });
+        }
+
+        function updateLayerStatus(elementId, isActive) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                const dot = element.querySelector('.status-dot');
+                const text = element.querySelector('span:last-child');
+                if (dot) {
+                    dot.classList.toggle('active', isActive);
+                    dot.classList.toggle('error', !isActive);
+                }
+                if (text) {
+                    text.textContent = isActive ? 'Aktiv' : 'Inaktiv';
+                }
+            }
+        }
+
+        async function checkEmailForArch() {
+            try {
+                const response = await fetch('/api/middleware/ping');
+                const data = await response.json();
+                return data.status === 'healthy';
+            } catch {
+                return false;
+            }
+        }
+
+        function checkApiConnection() {
+            const dot = document.getElementById('api-connection-dot');
+            const text = document.getElementById('api-connection-text');
+
+            fetch('/api/middleware/ping')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'healthy' || data.connected) {
+                        dot.classList.add('active');
+                        dot.classList.remove('error');
+                        text.textContent = 'Verbunden';
+                    } else {
+                        dot.classList.remove('active');
+                        dot.classList.add('error');
+                        text.textContent = 'Getrennt';
+                    }
+                })
+                .catch(() => {
+                    dot.classList.remove('active');
+                    dot.classList.add('error');
+                    text.textContent = 'Fehler';
+                });
+        }
+
+        function refreshArchStats(btn) {
+            // Visuelles Feedback - Button spinnen lassen
+            if (btn) {
+                btn.classList.add('spinning');
+                btn.disabled = true;
+            }
+
+            loadArchitectureStatus();
+
+            // Nach 1 Sekunde wieder aktivieren
+            setTimeout(() => {
+                if (btn) {
+                    btn.classList.remove('spinning');
+                    btn.disabled = false;
+                }
+            }, 1000);
+        }
+
         function loadSystemStatus() {
             fetch('/api/status')
                 .then(response => response.json())
@@ -280,7 +1291,7 @@
                     // Backend Status
                     const backendStatus = document.getElementById('backend-status');
                     const apiKeyStatus = document.getElementById('api-key-status');
-                    
+
                     if (data.backend && data.backend.available) {
                         backendStatus.textContent = 'Aktiv';
                         backendStatus.className = 'status-badge success';
@@ -288,7 +1299,7 @@
                         backendStatus.textContent = 'Inaktiv';
                         backendStatus.className = 'status-badge error';
                     }
-                    
+
                     if (data.backend && data.backend.api_configured) {
                         apiKeyStatus.textContent = 'Konfiguriert';
                         apiKeyStatus.className = 'status-badge success';
@@ -296,7 +1307,7 @@
                         apiKeyStatus.textContent = 'Fehlt';
                         apiKeyStatus.className = 'status-badge error';
                     }
-                    
+
                     // Middleware Status
                     const middlewareStatus = document.getElementById('middleware-status');
                     if (data.middleware && data.middleware.available) {
@@ -306,17 +1317,102 @@
                         middlewareStatus.textContent = 'Inaktiv';
                         middlewareStatus.className = 'status-badge error';
                     }
-                    
+
                     checkEmailStatus();
+
+                    // Features laden
+                    if (data.middleware && data.middleware.features) {
+                        loadFeatures(data.middleware.features, data.middleware.available);
+                    } else {
+                        loadFeatures({}, false);
+                    }
+
+                    // Health Dashboard laden
+                    if (data.health) {
+                        updateHealthDashboard(data.health);
+                    }
                 })
                 .catch(error => {
                     console.error('Error loading status:', error);
                 });
         }
-        
+
+        function loadFeatures(features, middlewareAvailable) {
+            const grid = document.getElementById('features-grid');
+            grid.innerHTML = '';
+
+            // Entferne alte Zusammenfassung falls vorhanden
+            const oldSummary = document.querySelector('.feature-summary');
+            if (oldSummary) oldSummary.remove();
+
+            // Wenn Middleware nicht verfügbar, zeige Warnung
+            if (!middlewareAvailable) {
+                grid.innerHTML = `
+                    <div class="feature-warning">
+                        <svg viewBox="0 0 24 24" style="width: 48px; height: 48px; color: #f59e0b; margin-bottom: 12px;">
+                            <path fill="currentColor" d="M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z"/>
+                        </svg>
+                        <div class="feature-warning-title">Middleware nicht initialisiert</div>
+                        <div class="feature-warning-text">Bitte MCTIME_API_KEY in der .env Datei konfigurieren und App neu starten.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            // Zähle aktive Features
+            const activeCount = Object.values(features).filter(f => f.status).length;
+            const totalCount = Object.keys(features).length;
+
+            // Füge Zusammenfassung hinzu
+            const summary = document.createElement('div');
+            summary.className = 'feature-summary';
+            summary.innerHTML = `<strong>${activeCount}/${totalCount}</strong> Features aktiv`;
+            grid.parentNode.insertBefore(summary, grid);
+
+            for (const [key, feature] of Object.entries(features)) {
+                const item = document.createElement('div');
+                item.className = 'feature-item';
+
+                const iconClass = feature.status ? 'active' : 'inactive';
+                const iconPath = feature.status
+                    ? 'M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z'
+                    : 'M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z';
+
+                item.innerHTML = `
+                    <svg class="feature-icon ${iconClass}" viewBox="0 0 24 24">
+                        <path fill="currentColor" d="${iconPath}"/>
+                    </svg>
+                    <div class="feature-content">
+                        <div class="feature-name">${feature.name}</div>
+                        <div class="feature-desc">${feature.description}</div>
+                    </div>
+                `;
+
+                grid.appendChild(item);
+            }
+        }
+
+        function updateHealthDashboard(health) {
+            document.getElementById('health-requests').textContent = health.requests_total || 0;
+            document.getElementById('health-success').textContent = health.requests_success || 0;
+            document.getElementById('health-failed').textContent = health.requests_failed || 0;
+            document.getElementById('health-response-time').textContent =
+                health.avg_response_time ? Math.round(health.avg_response_time) : '-';
+            document.getElementById('health-cache').textContent = health.cache_entries || 0;
+
+            // Aktuelle Zeit als letztes Update
+            const now = new Date();
+            document.getElementById('health-last-update').textContent =
+                now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function refreshHealth() {
+            loadSystemStatus();
+        }
+
         function checkEmailStatus() {
             const emailStatus = document.getElementById('email-status');
-            
+
             fetch('/api/middleware/ping')
                 .then(response => response.json())
                 .then(data => {
@@ -333,32 +1429,32 @@
                     emailStatus.className = 'status-badge warning';
                 });
         }
-        
+
         function testConnection() {
             const btn = document.getElementById('test-btn');
             const resultDiv = document.getElementById('test-result');
-            
+
             btn.disabled = true;
             btn.innerHTML = '<span>Teste...</span>';
-            
+
             const startTime = Date.now();
-            
+
             fetch('/api/middleware/ping')
                 .then(response => response.json())
                 .then(data => {
                     const responseTime = Date.now() - startTime;
-                    
+
                     if (data.status === 'healthy' || data.connected) {
                         resultDiv.innerHTML = `
                             <div class="test-result-box success">
-                                <strong>✅ Verbindung erfolgreich!</strong><br>
+                                <strong>Verbindung erfolgreich!</strong><br>
                                 <small>Antwortzeit: ${responseTime}ms</small>
                             </div>
                         `;
                     } else {
                         resultDiv.innerHTML = `
                             <div class="test-result-box error">
-                                <strong>⚠️ Verbindung fehlgeschlagen</strong><br>
+                                <strong>Verbindung fehlgeschlagen</strong><br>
                                 <small>${data.message || 'Unbekannter Fehler'}</small>
                             </div>
                         `;
@@ -367,7 +1463,7 @@
                 .catch(error => {
                     resultDiv.innerHTML = `
                         <div class="test-result-box error">
-                            <strong>❌ Verbindungsfehler</strong><br>
+                            <strong>Verbindungsfehler</strong><br>
                             <small>${error.message}</small>
                         </div>
                     `;
@@ -382,6 +1478,9 @@
                     `;
                 });
         }
+
+        // Auto-Refresh alle 30 Sekunden
+        setInterval(refreshHealth, 30000);
     </script>
 
     <!-- Footer -->

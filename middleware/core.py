@@ -41,10 +41,10 @@ class Middleware:
         # Initialisiere Backend Service (Hauptdatenquelle)
         if BackendService:
             self.backend = BackendService(self.api_key)
-            print("✅ Middleware nutzt Backend Service")
+            print("[OK] Middleware nutzt Backend Service")
         else:
             self.backend = None
-            print("⚠️ Backend nicht verfügbar - Middleware im Standalone-Modus")
+            print("[WARNUNG] Backend nicht verfügbar - Middleware im Standalone-Modus")
         
         # Initialisiere Middleware-Features
         self.auth = AuthHandler(self.api_key)

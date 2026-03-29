@@ -1565,11 +1565,10 @@
         };
         
         // Monatsdropdown füllen
-        function populateMonthDropdown() {
+        function populateMonthDropdown(defaultYear, defaultMonthIdx) {
             const select = document.getElementById('monthSelect');
             const today = new Date();
             const currentYear = today.getFullYear();
-            const currentMonthIdx = today.getMonth();
             
             // Monate von September 2025 bis heute
             const startYear = 2025;
@@ -1578,20 +1577,20 @@
             let options = '<option value="" disabled>Monat wählen...</option>';
             
             for (let year = currentYear; year >= startYear; year--) {
-                const endMonth = (year === currentYear) ? currentMonthIdx : 11;
+                const endMonth = (year === currentYear) ? today.getMonth() : 11;
                 const beginMonth = (year === startYear) ? startMonth : 0;
                 
                 for (let month = endMonth; month >= beginMonth; month--) {
                     const value = `${year}-${String(month + 1).padStart(2, '0')}`;
                     const label = `${germanMonths[month]} ${year}`;
-                    const selected = (year === currentYear && month === currentMonthIdx) ? 'selected' : '';
+                    // Setze den Standardmonat als ausgewählt
+                    const selected = (year === defaultYear && month === defaultMonthIdx) ? 'selected' : '';
                     options += `<option value="${value}" ${selected}>${label}</option>`;
                 }
             }
             
             select.innerHTML = options;
             select.classList.add('active');
-            currentMonth = `${currentYear}-${String(currentMonthIdx + 1).padStart(2, '0')}`;
         }
         
         // Initialisiere Charts
@@ -2138,12 +2137,17 @@
                     url += `&from=${dateFrom}&to=${dateTo}`;
                 }
                 
+                console.log('🔄 Lade Chart-Daten von:', url);
+                
                 const response = await fetch(url);
                 const data = await response.json();
+                
+                console.log('📊 Response Status:', data.status, 'Filter:', filter);
                 
                 const loadTime = ((performance.now() - startTime) / 1000).toFixed(1);
                 
                 if (data.status === 'success') {
+                    console.log('✅ Daten geladen erfolgreich!');
                     updateKPIs(data.kpi);
                     updateCharts(data);
                     
@@ -2156,10 +2160,12 @@
                     loadTimeBadge.classList.add('visible');
                     
                 } else {
-                    console.error('Fehler:', data.message);
+                    console.error('❌ Fehler:', data.message || data.error);
+                    alert('Fehler beim Laden der Daten: ' + (data.message || data.error));
                 }
             } catch (error) {
-                console.error('Fehler beim Laden der Daten:', error);
+                console.error('❌ Netzwerkfehler beim Laden der Daten:', error);
+                alert('Fehler: ' + error.message);
             } finally {
                 filterLoading.style.display = 'none';
             }
@@ -2167,7 +2173,12 @@
         
         // Beim Laden der Seite
         document.addEventListener('DOMContentLoaded', function() {
-            populateMonthDropdown();
+            // Setze den Standardmonat auf den letzten bekannten Datenpunkt
+            const defaultYear = 2025;
+            const defaultMonth = 12; // Dezember
+            const defaultMonthValue = `${defaultYear}-${String(defaultMonth).padStart(2, '0')}`;
+
+            populateMonthDropdown(defaultYear, defaultMonth - 1);
             initCharts();
             
             // Quartal-Jahr Dropdown füllen
@@ -2178,12 +2189,14 @@
                 const option = document.createElement('option');
                 option.value = year;
                 option.textContent = year;
-                if (year === currentYear) option.selected = true;
+                // Setze das Standardjahr
+                if (year === defaultYear) option.selected = true;
                 quarterYearSelect.appendChild(option);
             }
             
-            // Aktuelles Quartal ermitteln und auswählen
-            const currentQuarter = Math.floor((new Date().getMonth() / 3)) + 1;
+            // Aktuelles Quartal ermitteln und auswählen (basierend auf Default-Datum)
+            const defaultDate = new Date(defaultYear, defaultMonth - 1);
+            const currentQuarter = Math.floor((defaultDate.getMonth() / 3)) + 1;
             document.querySelectorAll('.quarter-btn').forEach(btn => {
                 btn.classList.remove('active');
                 if (parseInt(btn.dataset.quarter) === currentQuarter) {
@@ -2191,18 +2204,17 @@
                 }
             });
             
-            // Custom Date Range mit aktuellen Werten initialisieren
-            const today = new Date();
-            const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-            document.getElementById('customDateFrom').value = firstDayOfMonth.toISOString().split('T')[0];
-            document.getElementById('customDateTo').value = today.toISOString().split('T')[0];
+            // Custom Date Range mit sinnvollen Werten initialisieren
+            const lastDayOfMonth = new Date(defaultYear, defaultMonth, 0);
+            document.getElementById('customDateFrom').value = `${defaultYear}-${String(defaultMonth).padStart(2, '0')}-01`;
+            document.getElementById('customDateTo').value = lastDayOfMonth.toISOString().split('T')[0];
             
             // Default: Monat-Filter ist aktiv
             updateFilterUI('month');
             
-            // Aktuellen Monat laden
-            const currentMonthValue = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-            loadChartData('month', currentMonthValue);
+            // Lade die Daten für den Standardmonat (Dezember 2025)
+            console.log(`Lade Standard-Daten für: ${defaultMonthValue}`);
+            loadChartData('month', defaultMonthValue, null, null, `Dezember 2025`);
         });
     </script>
 </body>
