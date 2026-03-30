@@ -1615,18 +1615,16 @@
             const startYear = 2025;
             const startMonth = 8; // September (0-indexed)
             
-            let options = '<option value="" disabled>Monat wählen...</option>';
-            
+            let options = '<option value="" disabled selected>Monat wählen...</option>';
+
             for (let year = currentYear; year >= startYear; year--) {
                 const endMonth = (year === currentYear) ? today.getMonth() : 11;
                 const beginMonth = (year === startYear) ? startMonth : 0;
-                
+
                 for (let month = endMonth; month >= beginMonth; month--) {
                     const value = `${year}-${String(month + 1).padStart(2, '0')}`;
                     const label = `${germanMonths[month]} ${year}`;
-                    // Setze den Standardmonat als ausgewählt
-                    const selected = (year === defaultYear && month === defaultMonthIdx) ? 'selected' : '';
-                    options += `<option value="${value}" ${selected}>${label}</option>`;
+                    options += `<option value="${value}">${label}</option>`;
                 }
             }
             

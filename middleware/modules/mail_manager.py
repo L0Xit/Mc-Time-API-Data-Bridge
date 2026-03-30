@@ -4,6 +4,7 @@ Mail Manager - Modul für Mailversand-Funktionalität
 
 import os
 import smtplib
+import requests
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Dict, List, Optional
@@ -22,7 +23,7 @@ class MailManager:
             request_handler: RequestHandler (optional, für API-basierte Mail-Dienste)
         """
         self.request_handler = request_handler
-        
+
         # SMTP-Konfiguration aus Umgebungsvariablen
         self.smtp_server = os.getenv("SMTP_SERVER")
         self.smtp_port = int(os.getenv("SMTP_PORT", 587))
@@ -30,6 +31,9 @@ class MailManager:
         self.smtp_password = os.getenv("SMTP_PASSWORD")
         self.sender_email = os.getenv("SENDER_EMAIL")
         self.use_tls = os.getenv("USE_TLS", "true").lower() == "true"
+
+        # Brevo HTTP API (funktioniert auf Railway ohne SMTP-Ports)
+        self.brevo_api_key = os.getenv("BREVO_API_KEY", "")
     
     def is_configured(self) -> bool:
         """
@@ -268,24 +272,120 @@ class MailManager:
         csv_filename: str = None
     ) -> bool:
         """
-        Sendet E-Mail via SMTP
-        
-        Args:
-            to_email: Empfänger-Adresse(n), Komma-getrennt für mehrere
-            subject: Betreff
-            html_body: HTML-Inhalt
-            cc_email: CC-Empfänger-Adresse(n), Komma-getrennt für mehrere
-            csv_content: CSV-Inhalt als String
-            csv_filename: Dateiname für CSV-Anhang
-            
-        Returns:
-            True bei Erfolg
+        Sendet E-Mail - versucht zuerst Brevo HTTP API, dann SMTP als Fallback
         """
-        if not self.is_configured():
-            print("FEHLER: SMTP nicht konfiguriert!")
-            print("Bitte setze: SMTP_SERVER, SMTP_USERNAME, SMTP_PASSWORD, SENDER_EMAIL")
+        if not self.sender_email:
+            print("FEHLER: SENDER_EMAIL nicht gesetzt!")
+            self._last_error = "SENDER_EMAIL nicht konfiguriert"
             return False
-        
+
+        # Brevo HTTP API zuerst versuchen (funktioniert auf Railway)
+        if self.brevo_api_key:
+            print("Versuche E-Mail via Brevo HTTP API...")
+            result = self._send_via_brevo(
+                to_email=to_email,
+                subject=subject,
+                html_body=html_body,
+                cc_email=cc_email,
+                csv_content=csv_content,
+                csv_filename=csv_filename
+            )
+            if result:
+                return True
+            print("Brevo fehlgeschlagen, versuche SMTP-Fallback...")
+
+        # SMTP Fallback
+        if not self.is_configured():
+            if self.brevo_api_key:
+                # Brevo hat schon fehlgeschlagen, kein SMTP konfiguriert
+                return False
+            print("FEHLER: Weder Brevo noch SMTP konfiguriert!")
+            self._last_error = "Weder BREVO_API_KEY noch SMTP konfiguriert"
+            return False
+
+        return self._send_via_smtp(
+            to_email=to_email,
+            subject=subject,
+            html_body=html_body,
+            cc_email=cc_email,
+            csv_content=csv_content,
+            csv_filename=csv_filename
+        )
+
+    def _send_via_brevo(
+        self,
+        to_email: str,
+        subject: str,
+        html_body: str,
+        cc_email: str = None,
+        csv_content: str = None,
+        csv_filename: str = None
+    ) -> bool:
+        """
+        Sendet E-Mail via Brevo (Sendinblue) HTTP API
+        Braucht keinen SMTP-Port - funktioniert auf Railway!
+        """
+        import base64
+
+        try:
+            to_list = [{"email": e.strip()} for e in to_email.split(',') if e.strip()]
+            cc_list = [{"email": e.strip()} for e in cc_email.split(',') if e.strip()] if cc_email else []
+
+            payload = {
+                "sender": {"email": self.sender_email},
+                "to": to_list,
+                "subject": subject,
+                "htmlContent": html_body
+            }
+
+            if cc_list:
+                payload["cc"] = cc_list
+
+            # CSV-Anhang hinzufügen falls vorhanden
+            if csv_content and csv_filename:
+                payload["attachment"] = [{
+                    "content": base64.b64encode(csv_content.encode('utf-8')).decode('ascii'),
+                    "name": csv_filename
+                }]
+
+            print(f"Brevo API: Sende an {to_email}...")
+            response = requests.post(
+                "https://api.brevo.com/v3/smtp/email",
+                headers={
+                    "api-key": self.brevo_api_key,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                json=payload,
+                timeout=30
+            )
+
+            if response.status_code in (200, 201):
+                print(f"[OK] E-Mail via Brevo gesendet an {to_email}")
+                return True
+            else:
+                error_msg = response.text
+                print(f"Brevo API Fehler ({response.status_code}): {error_msg}")
+                self._last_error = f"Brevo API Fehler ({response.status_code}): {error_msg}"
+                return False
+
+        except Exception as e:
+            print(f"Brevo Fehler: {e}")
+            self._last_error = f"Brevo Fehler: {e}"
+            return False
+
+    def _send_via_smtp(
+        self,
+        to_email: str,
+        subject: str,
+        html_body: str,
+        cc_email: str = None,
+        csv_content: str = None,
+        csv_filename: str = None
+    ) -> bool:
+        """
+        Sendet E-Mail via SMTP (Fallback wenn Brevo nicht verfügbar)
+        """
         try:
             print("=== E-MAIL VERSENDEN ===")
             print(f"SMTP Server: {self.smtp_server}:{self.smtp_port}")
@@ -401,15 +501,45 @@ class MailManager:
     
     def test_connection(self) -> Dict:
         """
-        Testet SMTP-Verbindung
-        
-        Returns:
-            Dict mit Test-Ergebnis
+        Testet E-Mail-Verbindung (Brevo oder SMTP)
         """
+        # Brevo zuerst testen
+        if self.brevo_api_key:
+            try:
+                response = requests.get(
+                    "https://api.brevo.com/v3/account",
+                    headers={
+                        "api-key": self.brevo_api_key,
+                        "Accept": "application/json"
+                    },
+                    timeout=10
+                )
+                if response.status_code == 200:
+                    account = response.json()
+                    plan = account.get("plan", [{}])
+                    plan_type = plan[0].get("type", "unbekannt") if plan else "unbekannt"
+                    return {
+                        "status": "success",
+                        "message": f"Brevo API verbunden (Plan: {plan_type})"
+                    }
+                else:
+                    return {
+                        "status": "error",
+                        "message": f"Brevo API Fehler ({response.status_code}): {response.text}"
+                    }
+            except Exception as e:
+                brevo_error = str(e)
+                # Weiter zu SMTP Fallback
+                if not self.is_configured():
+                    return {
+                        "status": "error",
+                        "message": f"Brevo Fehler: {brevo_error}, SMTP nicht konfiguriert"
+                    }
+
         if not self.is_configured():
             return {
                 "status": "error",
-                "message": "SMTP nicht konfiguriert"
+                "message": "Weder Brevo noch SMTP konfiguriert"
             }
         
         ports_to_try = [(self.smtp_port, self.use_tls)]

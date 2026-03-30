@@ -321,7 +321,9 @@ Mit freundlichen Grüßen</textarea>
                     
                     <div id="email-loading" style="display: none;"></div>
                     
-                    <div id="success-message" class="success-message" style="display: none;"></div>
+                    <div id="success-message" class="success-message" style="display: none; margin-top: 16px; padding: 12px 16px; background: #ecfdf5; border-radius: 8px; color: #10b981; font-weight: 500; border-left: 4px solid #10b981;">
+                        ✓ Nachricht wurde erfolgreich gesendet.
+                    </div>
                     
                     <div id="error-message" class="error-message" style="display: none; margin-top: 16px; padding: 12px 16px; background: #fef2f2; border-radius: 8px; color: #ef4444; font-weight: 500; border-left: 4px solid #ef4444;">
                     </div>
@@ -1367,6 +1369,9 @@ Mit freundlichen Grüßen</textarea>
             const customSelects = document.querySelectorAll('.custom-select-wrapper');
             
             customSelects.forEach(wrapper => {
+                // Multi-Select hat eigene Logik (initEmployeeMultiSelect)
+                if (wrapper.classList.contains('multi-select')) return;
+
                 const trigger = wrapper.querySelector('.custom-select-trigger');
                 const dropdown = wrapper.querySelector('.custom-select-dropdown');
                 const searchInput = wrapper.querySelector('.custom-select-search-input');
