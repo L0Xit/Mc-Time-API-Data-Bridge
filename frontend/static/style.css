@@ -285,6 +285,7 @@ body {
     grid-template-columns: 1fr 400px;
     gap: 32px;
     margin-bottom: 32px;
+    align-items: start;
 }
 
 .card {

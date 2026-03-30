@@ -155,25 +155,6 @@
             </div>
         </div>
 
-        <!-- Cache & Reset Actions -->
-        <div class="card" style="margin-top: 24px;">
-            <h2 class="card-title">
-                <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;">
-                    <path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
-                </svg>
-                Cache verwalten
-            </h2>
-            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                <button onclick="clearCacheOnly()" class="btn btn-primary" id="clear-cache-btn" style="background: #ef4444; border-color: #ef4444;">
-                    <svg viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                        <path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
-                    </svg>
-                    Cache leeren
-                </button>
-            </div>
-            <div id="cache-action-result" style="margin-top: 12px;"></div>
-        </div>
-
         <!-- Live Health Dashboard -->
         <div class="card" style="margin-top: 24px;">
             <h2 class="card-title">
@@ -186,7 +167,13 @@
                         <path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/>
                     </svg>
                 </button>
+                <button onclick="clearCacheOnly()" class="refresh-btn" id="clear-cache-btn" title="Cache leeren" style="color: #ef4444;">
+                    <svg viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                        <path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                    </svg>
+                </button>
             </h2>
+            <div id="cache-action-result" style="margin-top: 0;"></div>
             <div class="health-grid" id="health-grid">
                 <div class="health-card">
                     <div class="health-value" id="health-requests">-</div>

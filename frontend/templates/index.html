@@ -1219,7 +1219,20 @@ Mit freundlichen Grüßen</textarea>
                 },
                 body: JSON.stringify(payload)
             })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            try {
+                                const json = JSON.parse(text);
+                                throw new Error(json.message || `Server-Fehler (${response.status})`);
+                            } catch (parseErr) {
+                                if (parseErr.message.startsWith('Server-Fehler') || parseErr.message !== parseErr.message) throw parseErr;
+                                throw new Error(`Server-Fehler (${response.status}). Bitte versuche es erneut.`);
+                            }
+                        });
+                    }
+                    return response.json();
+                })
                 .then(result => {
                     if (result.status === 'success') {
                         successMessage.style.display = 'block';

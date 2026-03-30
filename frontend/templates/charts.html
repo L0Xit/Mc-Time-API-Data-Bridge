@@ -1584,10 +1584,11 @@
         
         // Chart Instanzen speichern für Updates
         let weekdayChart, projectChart, trendChart, teamChart;
-        
+
         // Aktueller Filter
         let currentFilter = 'month';
         let currentMonth = null;
+        let currentAbortController = null;
         
         // Deutsche Monatsnamen
         const germanMonths = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 
@@ -2158,6 +2159,13 @@
         
         // Daten laden und Charts aktualisieren (erweitert)
         async function loadChartData(filter = 'month', monthValue = null, dateFrom = null, dateTo = null, customLabel = null) {
+            // Vorherigen Request abbrechen falls noch laufend
+            if (currentAbortController) {
+                currentAbortController.abort();
+            }
+            currentAbortController = new AbortController();
+            const signal = currentAbortController.signal;
+
             const filterLoading = document.getElementById('filterLoading');
             const loadTimeBadge = document.getElementById('loadTimeBadge');
             const loadTimeText = document.getElementById('loadTimeText');
@@ -2210,7 +2218,7 @@
 
                 console.log('Lade Chart-Daten von:', url);
 
-                const response = await fetch(url);
+                const response = await fetch(url, { signal });
                 const data = await response.json();
 
                 // Fortschritt auf 100% setzen
@@ -2243,6 +2251,9 @@
                 }
             } catch (error) {
                 clearInterval(progressInterval);
+                if (error.name === 'AbortError') {
+                    return; // Request wurde abgebrochen (neuer Filter gewählt)
+                }
                 console.error('Netzwerkfehler beim Laden der Daten:', error);
                 alert('Fehler: ' + error.message);
             } finally {
