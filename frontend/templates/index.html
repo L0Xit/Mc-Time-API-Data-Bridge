@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -318,14 +319,9 @@ Mit freundlichen Grüßen</textarea>
                     
                     <button class="btn btn-primary" id="send-email-btn" onclick="sendEmail(event)">Senden</button>
                     
-                    <div id="email-loading" class="email-loading" style="display: none; margin-top: 16px; align-items: center; gap: 12px; padding: 12px 16px; background: #eff6ff; border-radius: 8px; color: #1e40af; font-weight: 500;">
-                        <div class="spinner" style="width: 18px; height: 18px; border: 3px solid #e0e7ff; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
-                        <span>E-Mail wird versendet...</span>
-                    </div>
+                    <div id="email-loading" style="display: none;"></div>
                     
-                    <div id="success-message" class="success-message" style="display: none; margin-top: 16px; padding: 12px 16px; background: #ecfdf5; border-radius: 8px; color: #10b981; font-weight: 500; border-left: 4px solid #10b981;">
-                        ✓ Nachricht wurde erfolgreich gesendet.
-                    </div>
+                    <div id="success-message" class="success-message" style="display: none;"></div>
                     
                     <div id="error-message" class="error-message" style="display: none; margin-top: 16px; padding: 12px 16px; background: #fef2f2; border-radius: 8px; color: #ef4444; font-weight: 500; border-left: 4px solid #ef4444;">
                     </div>

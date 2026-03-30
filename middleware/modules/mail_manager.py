@@ -129,9 +129,10 @@ class MailManager:
                 "email": employee_email
             }
         else:
+            error_detail = getattr(self, '_last_error', 'Unbekannter Fehler')
             return {
                 "status": "error",
-                "message": "Fehler beim Senden der E-Mail"
+                "message": f"Fehler beim Senden der E-Mail: {error_detail}"
             }
     
     def _create_report_html(
@@ -328,17 +329,52 @@ class MailManager:
                 )
                 msg.attach(csv_attachment)
             
-            # Verbinde zu SMTP
-            print(f"Verbinde zu SMTP mit TLS: {self.use_tls}")
-            server = smtplib.SMTP(self.smtp_server, self.smtp_port)
-            
-            if self.use_tls:
-                print("Aktiviere TLS...")
-                server.starttls()
-            
-            print("Login...")
-            server.login(self.smtp_username, self.smtp_password)
-            
+            # SMTP-Verbindung: Versuche zuerst konfigurierten Port,
+            # dann Fallback auf SSL (Port 465) falls Railway Port 587 blockiert
+            server = None
+            ports_to_try = [(self.smtp_port, self.use_tls)]
+
+            # Fallback: Wenn Port 587 (STARTTLS), probiere auch 465 (SSL direkt)
+            if self.smtp_port == 587:
+                ports_to_try.append((465, False))  # SSL direkt, kein STARTTLS
+
+            last_connect_error = None
+            for port, use_starttls in ports_to_try:
+                try:
+                    print(f"Verbinde zu SMTP {self.smtp_server}:{port} (STARTTLS={use_starttls})...")
+
+                    if port == 465 and not use_starttls:
+                        # SSL direkt (Port 465)
+                        server = smtplib.SMTP_SSL(self.smtp_server, port, timeout=15)
+                    else:
+                        # STARTTLS (Port 587)
+                        server = smtplib.SMTP(self.smtp_server, port, timeout=15)
+                        if use_starttls:
+                            print("Aktiviere STARTTLS...")
+                            server.starttls()
+
+                    print("Login...")
+                    server.login(self.smtp_username, self.smtp_password)
+                    print(f"[OK] Verbunden via Port {port}")
+                    last_connect_error = None
+                    break  # Verbindung erfolgreich
+
+                except (TimeoutError, OSError, smtplib.SMTPException) as e:
+                    last_connect_error = e
+                    print(f"Port {port} fehlgeschlagen: {e}")
+                    if server:
+                        try:
+                            server.quit()
+                        except Exception:
+                            pass
+                        server = None
+                    continue
+
+            if last_connect_error or not server:
+                self._last_error = f"SMTP-Verbindung fehlgeschlagen auf allen Ports: {last_connect_error}"
+                print(f"FEHLER: {self._last_error}")
+                return False
+
             print("Sende E-Mail...")
             server.sendmail(self.sender_email, all_recipients, msg.as_string())
             server.quit()
@@ -348,12 +384,19 @@ class MailManager:
             
         except smtplib.SMTPAuthenticationError as e:
             print(f"SMTP Authentifizierungsfehler: {e}")
+            self._last_error = f"SMTP-Authentifizierung fehlgeschlagen: {e}"
             return False
         except smtplib.SMTPException as e:
             print(f"SMTP Fehler: {e}")
+            self._last_error = f"SMTP-Fehler: {e}"
+            return False
+        except (TimeoutError, OSError) as e:
+            print(f"SMTP Verbindungsfehler (Timeout/Netzwerk): {e}")
+            self._last_error = f"SMTP-Verbindung fehlgeschlagen (Port {self.smtp_port} evtl. blockiert): {e}"
             return False
         except Exception as e:
             print(f"E-Mail Versandfehler: {e}")
+            self._last_error = f"E-Mail Versandfehler: {e}"
             return False
     
     def test_connection(self) -> Dict:
@@ -369,22 +412,32 @@ class MailManager:
                 "message": "SMTP nicht konfiguriert"
             }
         
-        try:
-            server = smtplib.SMTP(self.smtp_server, self.smtp_port)
-            
-            if self.use_tls:
-                server.starttls()
-            
-            server.login(self.smtp_username, self.smtp_password)
-            server.quit()
-            
-            return {
-                "status": "success",
-                "message": "SMTP-Verbindung erfolgreich"
-            }
-            
-        except Exception as e:
-            return {
-                "status": "error",
-                "message": f"SMTP-Verbindung fehlgeschlagen: {str(e)}"
-            }
+        ports_to_try = [(self.smtp_port, self.use_tls)]
+        if self.smtp_port == 587:
+            ports_to_try.append((465, False))
+
+        for port, use_starttls in ports_to_try:
+            try:
+                if port == 465 and not use_starttls:
+                    server = smtplib.SMTP_SSL(self.smtp_server, port, timeout=15)
+                else:
+                    server = smtplib.SMTP(self.smtp_server, port, timeout=15)
+                    if use_starttls:
+                        server.starttls()
+
+                server.login(self.smtp_username, self.smtp_password)
+                server.quit()
+
+                return {
+                    "status": "success",
+                    "message": f"SMTP-Verbindung erfolgreich (Port {port})"
+                }
+
+            except Exception as e:
+                last_error = str(e)
+                continue
+
+        return {
+            "status": "error",
+            "message": f"SMTP-Verbindung fehlgeschlagen auf allen Ports: {last_error}"
+        }
