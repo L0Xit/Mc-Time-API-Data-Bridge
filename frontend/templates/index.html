@@ -1399,21 +1399,23 @@ Mit freundlichen Grüßen</textarea>
                         const text = option.textContent.trim();
                         
                         // Update display
-                        valueDisplay.textContent = text;
-                        
+                        if (valueDisplay) {
+                            valueDisplay.textContent = text;
+                        }
+
                         // Update hidden select
                         if (hiddenSelect) {
                             hiddenSelect.value = value;
                             hiddenSelect.dispatchEvent(new Event('change'));
                         }
-                        
+
                         // Update selected state
                         options.forEach(opt => opt.classList.remove('selected'));
                         option.classList.add('selected');
-                        
+
                         // Close dropdown
                         wrapper.classList.remove('open');
-                        
+
                         // Clear search
                         if (searchInput) {
                             searchInput.value = '';
@@ -1556,21 +1558,23 @@ Mit freundlichen Grüßen</textarea>
                     const text = option.textContent.trim();
                     
                     // Update display
-                    valueDisplay.textContent = text;
-                    
+                    if (valueDisplay) {
+                        valueDisplay.textContent = text;
+                    }
+
                     // Update hidden select
                     if (hiddenSelect) {
                         hiddenSelect.value = value;
                         hiddenSelect.dispatchEvent(new Event('change'));
                     }
-                    
+
                     // Update selected state
                     options.forEach(opt => opt.classList.remove('selected'));
                     option.classList.add('selected');
-                    
+
                     // Close dropdown
                     wrapper.classList.remove('open');
-                    
+
                     // Clear search
                     const currentSearchInput = wrapper.querySelector('.custom-select-search-input');
                     if (currentSearchInput) {
