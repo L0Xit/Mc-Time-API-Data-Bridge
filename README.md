@@ -2,7 +2,7 @@
 
 **Version 2.1 - Stabile Version mit erweitertem Charting und Bugfixes**
 
-Ein modernes Dashboard zur Zeiterfassungsverwaltung, das direkt mit der McTime API integriert ist. Entwickelt für die HTL Spengergasse, 5. Jahrgang, als Abschlussprojekt.
+Ein modernes Dashboard zur Zeiterfassungsverwaltung, das direkt mit der McTime API integriert ist. Entwickelt als Diplomarbeit, tgm.
 
 ## 🚀 Features
 
