@@ -25,9 +25,6 @@ class Settings:
     SMTP_PASSWORD: str = os.getenv('SMTP_PASSWORD', '')
     SENDER_EMAIL: str = os.getenv('SENDER_EMAIL', '')
     USE_TLS: bool = os.getenv('USE_TLS', 'true').lower() == 'true'
-
-    # Brevo (Sendinblue) HTTP API - funktioniert auf Railway (kein SMTP-Port nötig)
-    BREVO_API_KEY: str = os.getenv('BREVO_API_KEY', '')
     
     # Flask
     FLASK_SECRET_KEY: str = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')

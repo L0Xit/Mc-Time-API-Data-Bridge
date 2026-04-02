@@ -535,10 +535,9 @@ class Middleware:
                     "entries": total_entries
                 }
             else:
-                error_detail = getattr(self.mail, '_last_error', 'Unbekannter Fehler')
                 return {
                     "status": "error",
-                    "message": f"Fehler beim Senden der E-Mail: {error_detail}"
+                    "message": "Fehler beim Senden der E-Mail"
                 }
                 
         except Exception as e:
