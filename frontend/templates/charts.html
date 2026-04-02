@@ -9,6 +9,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Flatpickr für moderne Datepicker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/de.js"></script>
     <!-- Chart.js für moderne Diagramme -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -644,6 +649,34 @@
             box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
         }
 
+        /* Daten laden Button */
+        .load-data-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 14px;
+            padding: 10px 22px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .load-data-btn:hover:not(:disabled) {
+            background: #2563eb;
+        }
+        .load-data-btn:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+        .load-data-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
         /* Quartal Grid */
         .quarter-grid {
             display: grid;
@@ -766,13 +799,15 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            padding: 14px 20px;
-            background: linear-gradient(135deg, #fef3c7, #fde68a);
-            border-radius: 12px;
+            gap: 8px;
+            padding: 10px 16px;
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 10px;
             color: #92400e;
             font-weight: 500;
-            font-size: 0.9rem;
+            font-size: 0.8rem;
+            margin-top: 12px;
             margin-top: 20px;
             animation: fadeIn 0.3s ease;
         }
@@ -835,26 +870,27 @@
         .load-time-badge {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+            gap: 6px;
+            padding: 6px 14px;
+            background: #f0fdf4;
+            color: #15803d;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-top: 12px;
             opacity: 0;
-            transform: translateY(-10px);
             transition: all 0.3s ease;
         }
-        
+
         .load-time-badge.visible {
             opacity: 1;
-            transform: translateY(0);
         }
-        
+
         .load-time-badge svg {
             flex-shrink: 0;
+            width: 14px;
+            height: 14px;
         }
 
         /* Responsive */
@@ -1211,8 +1247,12 @@
                         <div class="filter-detail" id="detail-month">
                             <label>Monat auswählen:</label>
                             <select class="filter-select-modern" id="monthSelect">
-                                <option value="" disabled>Monat wählen...</option>
+                                <option value="" disabled selected>Monat wählen...</option>
                             </select>
+                            <button class="load-data-btn" id="loadMonthBtn">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z"/></svg>
+                                Daten laden
+                            </button>
                         </div>
                         
                         <!-- Quartal Auswahl -->
@@ -1231,14 +1271,21 @@
                                     <option value="2024">2024</option>
                                 </select>
                             </div>
+                            <button class="load-data-btn" id="loadQuarterBtn">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z"/></svg>
+                                Daten laden
+                            </button>
                         </div>
                         
                         <!-- Benutzerdefiniert -->
                         <div class="filter-detail" id="detail-custom" style="display: none;">
                             <div class="date-range-row">
                                 <div class="date-input-group">
-                                    <label>Von:</label>
-                                    <input type="date" class="date-input-modern" id="customDateFrom" value="2025-09-01">
+                                    <label>VON:</label>
+                                    <div class="date-input-wrapper">
+                                        <input type="text" class="modern-date-input" id="customDateFrom" placeholder="Datum wählen...">
+                                        <svg class="date-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z"/></svg>
+                                    </div>
                                 </div>
                                 <div class="date-range-separator">
                                     <svg viewBox="0 0 24 24" width="20" height="20" fill="#94a3b8">
@@ -1246,10 +1293,17 @@
                                     </svg>
                                 </div>
                                 <div class="date-input-group">
-                                    <label>Bis:</label>
-                                    <input type="date" class="date-input-modern" id="customDateTo" value="2025-12-09">
+                                    <label>BIS:</label>
+                                    <div class="date-input-wrapper">
+                                        <input type="text" class="modern-date-input" id="customDateTo" placeholder="Datum wählen...">
+                                        <svg class="date-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z"/></svg>
+                                    </div>
                                 </div>
                             </div>
+                            <button class="load-data-btn" id="loadCustomBtn">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z"/></svg>
+                                Daten laden
+                            </button>
                         </div>
                         
                         <!-- Alltime Info -->
@@ -1615,7 +1669,7 @@
             const startYear = 2025;
             const startMonth = 8; // September (0-indexed)
             
-            let options = '<option value="" disabled selected>Monat wählen...</option>';
+            let options = '<option value="" disabled>Monat wählen...</option>';
 
             for (let year = currentYear; year >= startYear; year--) {
                 const endMonth = (year === currentYear) ? today.getMonth() : 11;
@@ -1624,7 +1678,8 @@
                 for (let month = endMonth; month >= beginMonth; month--) {
                     const value = `${year}-${String(month + 1).padStart(2, '0')}`;
                     const label = `${germanMonths[month]} ${year}`;
-                    options += `<option value="${value}">${label}</option>`;
+                    const selected = (year === defaultYear && month === defaultMonthIdx) ? 'selected' : '';
+                    options += `<option value="${value}" ${selected}>${label}</option>`;
                 }
             }
             
@@ -2082,44 +2137,67 @@
         document.querySelectorAll('.filter-chip').forEach(btn => {
             btn.addEventListener('click', function() {
                 const filter = this.dataset.filter;
+
+                // Laufenden Request abbrechen beim Filterwechsel
+                if (currentAbortController) {
+                    currentAbortController.abort();
+                    currentAbortController = null;
+                }
+
+                // Loading ausblenden beim Wechsel
+                const filterLoading = document.getElementById('filterLoading');
+                filterLoading.style.display = 'none';
+
                 currentFilter = filter;
                 updateFilterUI(filter);
-                
-                // Je nach Filter-Typ laden
-                if (filter === 'month') {
-                    const monthSelect = document.getElementById('monthSelect');
-                    if (monthSelect.value) {
-                        loadChartData('month', monthSelect.value);
-                    }
-                } else if (filter === 'quarter') {
-                    loadQuarterData();
-                } else if (filter === 'custom') {
-                    loadCustomRangeData();
-                } else if (filter === 'year' || filter === 'alltime') {
+
+                // NUR year und alltime laden sofort (haben keine Auswahl-Optionen)
+                if (filter === 'year' || filter === 'alltime') {
                     loadChartData(filter);
                 }
+                // month, quarter, custom: User wählt erst Optionen, dann wird geladen
             });
         });
         
-        // Monat Dropdown Event
+        // Monat Dropdown Event - nur Button enablen, NICHT laden
         document.getElementById('monthSelect').addEventListener('change', function() {
-            currentFilter = 'month';
             currentMonth = this.value;
-            loadChartData('month', this.value);
+            const btn = document.getElementById('loadMonthBtn');
+            btn.disabled = !this.value;
+        });
+
+        // Monat laden Button
+        document.getElementById('loadMonthBtn').addEventListener('click', function() {
+            const monthSelect = document.getElementById('monthSelect');
+            if (monthSelect.value) {
+                currentFilter = 'month';
+                loadChartData('month', monthSelect.value);
+            }
         });
         
-        // Quartal-Buttons Event Listener
+        // Quartal-Buttons Event Listener - nur Auswahl ändern, NICHT laden
         document.querySelectorAll('.quarter-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 document.querySelectorAll('.quarter-btn').forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
-                loadQuarterData();
             });
         });
-        
-        // Quartal-Jahr Dropdown Event
+
+        // Quartal-Jahr Dropdown Event - nicht auto-laden
         document.getElementById('quarterYearSelect').addEventListener('change', function() {
+            // Nur Auswahl merken, User klickt "Daten laden"
+        });
+
+        // Quartal laden Button
+        document.getElementById('loadQuarterBtn').addEventListener('click', function() {
+            currentFilter = 'quarter';
             loadQuarterData();
+        });
+
+        // Custom laden Button
+        document.getElementById('loadCustomBtn').addEventListener('click', function() {
+            currentFilter = 'custom';
+            loadCustomRangeData();
         });
         
         // Quartaldaten laden
@@ -2140,9 +2218,7 @@
             loadChartData('custom', null, range.start, range.end, `Q${quarter} ${year}`);
         }
         
-        // Benutzerdefinierter Bereich Event Listener
-        document.getElementById('customDateFrom').addEventListener('change', loadCustomRangeData);
-        document.getElementById('customDateTo').addEventListener('change', loadCustomRangeData);
+        // Benutzerdefinierter Bereich - Flatpickr handlelt onChange direkt
         
         function loadCustomRangeData() {
             const fromDate = document.getElementById('customDateFrom').value;
@@ -2156,10 +2232,16 @@
         }
         
         // Daten laden und Charts aktualisieren (erweitert)
+        let activeProgressInterval = null;
+
         async function loadChartData(filter = 'month', monthValue = null, dateFrom = null, dateTo = null, customLabel = null) {
             // Vorherigen Request abbrechen falls noch laufend
             if (currentAbortController) {
                 currentAbortController.abort();
+            }
+            if (activeProgressInterval) {
+                clearInterval(activeProgressInterval);
+                activeProgressInterval = null;
             }
             currentAbortController = new AbortController();
             const signal = currentAbortController.signal;
@@ -2172,7 +2254,7 @@
             const progressPercent = document.getElementById('progressPercent');
             const loadingStatusText = document.getElementById('loadingStatusText');
 
-            // Loading anzeigen, Ladezeit-Badge ausblenden
+            // Loading sauber zurücksetzen und anzeigen
             filterLoading.style.display = 'flex';
             loadTimeBadge.classList.remove('visible');
             progressBarFill.style.width = '0%';
@@ -2180,17 +2262,15 @@
             progressStepText.textContent = 'Verbindung wird hergestellt...';
             loadingStatusText.textContent = 'Daten werden geladen...';
 
-            // Simuliere Fortschritt (da wir den echten Server-Fortschritt nicht kennen)
+            // Simuliere Fortschritt
             let progress = 0;
-            const progressInterval = setInterval(() => {
+            activeProgressInterval = setInterval(() => {
                 if (progress < 90) {
-                    // Schneller am Anfang, langsamer gegen Ende
                     const increment = progress < 30 ? 8 : progress < 60 ? 4 : 2;
                     progress = Math.min(progress + increment, 90);
                     progressBarFill.style.width = progress + '%';
                     progressPercent.textContent = Math.round(progress) + '%';
 
-                    // Statustext wechseln
                     if (progress < 20) {
                         progressStepText.textContent = 'Verbindung wird hergestellt...';
                     } else if (progress < 50) {
@@ -2220,7 +2300,8 @@
                 const data = await response.json();
 
                 // Fortschritt auf 100% setzen
-                clearInterval(progressInterval);
+                clearInterval(activeProgressInterval);
+                activeProgressInterval = null;
                 progressBarFill.style.width = '100%';
                 progressPercent.textContent = '100%';
                 progressStepText.textContent = 'Fertig!';
@@ -2235,11 +2316,9 @@
                     updateKPIs(data.kpi);
                     updateCharts(data);
 
-                    // Update Periodtext mit Label
                     const periodTextEl = document.getElementById('selected-period-text');
                     periodTextEl.textContent = customLabel || data.filter_label || 'Daten geladen';
 
-                    // Ladezeit anzeigen
                     loadTimeText.textContent = `Geladen in ${loadTime}s`;
                     loadTimeBadge.classList.add('visible');
 
@@ -2247,18 +2326,23 @@
                     console.error('Fehler:', data.message || data.error);
                     alert('Fehler beim Laden der Daten: ' + (data.message || data.error));
                 }
-            } catch (error) {
-                clearInterval(progressInterval);
-                if (error.name === 'AbortError') {
-                    return; // Request wurde abgebrochen (neuer Filter gewählt)
-                }
-                console.error('Netzwerkfehler beim Laden der Daten:', error);
-                alert('Fehler: ' + error.message);
-            } finally {
+
                 // Kurz warten damit man 100% sieht, dann ausblenden
                 setTimeout(() => {
                     filterLoading.style.display = 'none';
-                }, 300);
+                }, 500);
+
+            } catch (error) {
+                clearInterval(activeProgressInterval);
+                activeProgressInterval = null;
+                if (error.name === 'AbortError') {
+                    // Sauber aufräumen bei Abbruch
+                    filterLoading.style.display = 'none';
+                    return;
+                }
+                console.error('Netzwerkfehler beim Laden der Daten:', error);
+                filterLoading.style.display = 'none';
+                alert('Fehler: ' + error.message);
             }
         }
         
@@ -2295,10 +2379,26 @@
                 }
             });
 
-            // Custom Date Range mit sinnvollen Werten initialisieren
+            // Custom Date Range mit Flatpickr initialisieren
             const lastDayOfMonth = new Date(defaultYear, defaultMonth, 0);
-            document.getElementById('customDateFrom').value = `${defaultYear}-${String(defaultMonth).padStart(2, '0')}-01`;
-            document.getElementById('customDateTo').value = lastDayOfMonth.toISOString().split('T')[0];
+            const defaultFromStr = `${defaultYear}-${String(defaultMonth).padStart(2, '0')}-01`;
+            const defaultToStr = lastDayOfMonth.toISOString().split('T')[0];
+
+            flatpickr('#customDateFrom', {
+                locale: 'de',
+                dateFormat: 'Y-m-d',
+                altInput: true,
+                altFormat: 'd.m.Y',
+                defaultDate: defaultFromStr
+            });
+
+            flatpickr('#customDateTo', {
+                locale: 'de',
+                dateFormat: 'Y-m-d',
+                altInput: true,
+                altFormat: 'd.m.Y',
+                defaultDate: defaultToStr
+            });
 
             // Kein Filter vorausgewählt - User soll selbst wählen
             // Alle Filter-Details verstecken
